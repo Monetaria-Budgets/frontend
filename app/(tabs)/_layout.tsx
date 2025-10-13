@@ -1,0 +1,189 @@
+import { Tabs, useRouter } from 'expo-router';
+import React from 'react';
+
+import { HapticTab } from '@/components/haptic-tab';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { Pressable, Text, View } from 'react-native';
+
+export default function TabLayout() {
+  const colorScheme = useColorScheme();
+  const router = useRouter();
+
+  return (
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarInactiveTintColor: Colors[colorScheme ?? 'light'].tabIconDefault,
+        headerShown: true,
+        tabBarButton: HapticTab,
+        tabBarStyle: {
+          backgroundColor: Colors[colorScheme ?? 'light'].background,
+          height: 90,
+          paddingBottom: 6,
+          paddingTop: 10,
+        },
+        tabBarShowLabel: false,
+        tabBarIconStyle: {
+          marginBottom: -4,
+        },
+        headerLeft: () => (
+          <Pressable
+            onPress={() => {
+              router.push('/(screens)/profile');
+            }}
+            hitSlop={10}
+          >
+            <MaterialIcons
+              name="account-circle"
+              size={30}
+              color={Colors[colorScheme ?? 'light'].text}
+              style={{ paddingHorizontal: 10 }}
+            />
+          </Pressable>
+        ),
+      }}>
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Главная',
+          tabBarIcon: ({ color, focused }) => (
+            <View style={{
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4,
+            }}>
+              <Ionicons name="home" size={24} color={color} />
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                style={{
+                  fontSize: 12,
+                  color: color,
+                  fontWeight: focused ? '600' : '400',
+                  textAlign: 'center',
+                  width: 80,
+                }}
+              >
+                Главная
+              </Text>
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="history"
+        options={{
+          title: 'История',
+          tabBarIcon: ({ color, focused }) => (
+            <View style={{
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4,
+            }}>
+             <Ionicons name="time-sharp" size={24} color={color} />
+             <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                style={{
+                  fontSize: 12,
+                  color: color,
+                  fontWeight: focused ? '600' : '400',
+                  textAlign: 'center',
+                  width: 80,
+                }}
+              >
+                История
+              </Text>
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="add"
+        options={{
+          title: 'Добавить',
+          tabBarIcon: ({ color }) => (
+            <Pressable
+              onPress={() => router.push('/(modals)/add-modal')}
+              style={{
+                width: 60,
+                height: 60,
+                borderRadius: 30,
+                backgroundColor: Colors[colorScheme ?? 'light'].tint,
+                alignItems: 'center',
+                justifyContent: 'center',
+                top: -30,
+                position: 'absolute',
+              }}
+            >
+              <Ionicons name="add" size={32} color="#fff" />
+            </Pressable>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="statistics"
+        options={{
+          title: 'Статистика',
+          tabBarIcon: ({ color, focused }) => (
+            <View style={{
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4,
+            }}>
+              <Ionicons name="stats-chart" size={24} color={color} />
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                style={{
+                  fontSize: 12,
+                  color: color,
+                  fontWeight: focused ? '600' : '400',
+                  textAlign: 'center',
+                  width: 80,
+                }}
+              >
+                Статистика
+              </Text>
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="currencies"
+        options={{
+          title: 'Валюты',
+          tabBarIcon: ({ color, focused }) => (
+            <View style={{
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4,
+            }}>
+              <MaterialIcons name="currency-exchange" size={24} color={color} />
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                style={{
+                  fontSize: 12,
+                  color: color,
+                  fontWeight: focused ? '600' : '400',
+                  textAlign: 'center',
+                  width: 80,
+                }}
+              >
+                Валюты
+              </Text>
+            </View>
+          ),
+        }}
+      />
+    </Tabs>
+  );
+}
