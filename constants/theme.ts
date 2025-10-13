@@ -6,7 +6,9 @@
 import { Platform } from 'react-native';
 
 const tintColorLight = '#5359E5';
-const tintColorDark = '#2089df'; // убрал лишние символы (было 'ff' в конце)
+const tintColorDark = '#5359E5';
+
+// const tintColorDark = '#2089df'; // убрал лишние символы (было 'ff' в конце)
 
 export const Colors = {
   light: {

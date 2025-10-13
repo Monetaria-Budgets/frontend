@@ -5,9 +5,16 @@ import axios from "axios";
 type User = {
     id: number;
     login: string;
+    name: string;
     email: string;
     role: string;
     premium: boolean;
+    color_scheme?: string;
+    currency?: {
+        id: number;
+        code: string;
+        name: string;
+    };
 };
 
 type AuthContextType = {

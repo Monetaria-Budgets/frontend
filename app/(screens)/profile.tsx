@@ -1,23 +1,33 @@
-import { View, Text, Pressable, StyleSheet, ScrollView } from "react-native";
+// app/(tabs)/profile.tsx
+import React from 'react';
+import { View, ScrollView, Pressable, Text, StyleSheet, Alert } from "react-native";
 import { useAuth } from "../../contexts/AuthContext";
 import { useRouter } from "expo-router";
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Stack } from 'expo-router';
+import { usePinCodeWithAuth } from "@/hooks/usePinCodeWithAuth";
+
+// Импортируем компоненты
+import ProfileHeader from '@/components/profile/ProfileHeader';
+import ProfileInfoCard from '@/components/profile/ProfileInfoCard';
+import ProfileActionButton from '@/components/profile/ProfileActionButton';
+import ProfileSection from '@/components/profile/ProfileSection';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { isPinCodeSet } = usePinCodeWithAuth();
 
   const handleLogout = async () => {
     await logout();
     router.replace("/(auth)/login");
   };
 
-  // Вспомогательные функции для безопасного отображения
+  // Вспомогательные функции
   const getInitial = () => {
     const login = user?.login;
     if (typeof login === 'string' && login.length > 0) {
@@ -26,22 +36,66 @@ export default function ProfileScreen() {
     return 'U';
   };
 
-  const getLogin = () => typeof user?.login === 'string' ? user.login : 'Пользователь';
+  const getName = () => typeof user?.name === 'string' ? user.name : 'Пользователь';
   const getEmail = () => typeof user?.email === 'string' ? user.email : 'email@example.com';
   const getRole = () => typeof user?.role === 'string' ? user.role : 'Пользователь';
   const isPremium = Boolean(user?.premium);
+
+  const handlePinCodeAction = () => {
+    if (isPinCodeSet) {
+      Alert.alert(
+        'PIN-код',
+        'Что вы хотите сделать?',
+        [
+          { 
+            text: 'Изменить PIN', 
+            onPress: () => router.push('/pin-code?change=true') 
+          },
+          { 
+            text: 'Отключить PIN', 
+            onPress: () => router.push('/pin-code?disable=true')
+          },
+          { text: 'Отмена', style: 'cancel' }
+        ]
+      );
+    } else {
+      router.push('/pin-code?setup=true');
+    }
+  };
+
+  const handleUpgradeToPremium = () => {
+    Alert.alert(
+      'Premium подписка',
+      'Откройте все возможности приложения с Premium подпиской!',
+      [
+        {
+          text: 'Узнать больше',
+          onPress: () => console.log('Navigate to premium screen')
+        },
+        {
+          text: 'Купить за 299₽/мес',
+          style: 'default',
+          onPress: () => console.log('Purchase premium')
+        },
+        {
+          text: 'Отмена',
+          style: 'cancel'
+        }
+      ]
+    );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen 
         options={{ 
-            headerShown: true,
-            headerTitle: "Профиль",
-            headerLeft: () => (
+          headerShown: true,
+          headerTitle: "Профиль",
+          headerLeft: () => (
             <Pressable onPress={() => router.back()}>
-                <Ionicons name="arrow-back" size={24} color={colors.text} style={{ paddingHorizontal: 10 }}/>
+              <Ionicons name="arrow-back" size={24} color={colors.text} style={{ paddingHorizontal: 10 }}/>
             </Pressable>
-            ),
+          ),
         }} 
       />
       
@@ -51,126 +105,101 @@ export default function ProfileScreen() {
         contentContainerStyle={styles.scrollContent}
       >
         {/* Аватар и основная информация */}
-        <View style={[styles.profileCard, { 
-          backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)' 
-        }]}>
-          <View style={[styles.avatar, { backgroundColor: colors.tint }]}>
-            <Text style={styles.avatarText}>
-              {getInitial()}
-            </Text>
-          </View>
-          
-          <Text style={[styles.userName, { color: colors.text }]}>
-            {getLogin()}
-          </Text>
-          
-          <Text style={[styles.userEmail, { color: colors.icon }]}>
-            {getEmail()}
-          </Text>
-        </View>
+        <ProfileHeader
+          initial={getInitial()}
+          name={getName()}
+          email={getEmail()}
+        />
 
         {/* Информационные карточки */}
-        <View style={styles.infoSection}>
-          <Text style={[styles.sectionLabel, { color: colors.text }]}>
-            Информация аккаунта
-          </Text>
+        <ProfileSection title="Информация аккаунта">
+          <ProfileInfoCard
+            icon="person"
+            label="Роль"
+            value={getRole()}
+          />
           
-          {/* Роль */}
-          <View style={[styles.infoCard, { 
-            backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)' 
-          }]}>
-            <View style={styles.infoRow}>
-              <View style={styles.infoIcon}>
-                <Ionicons name="person" size={20} color={colors.icon} />
-              </View>
-              <View style={styles.infoContent}>
-                <Text style={[styles.infoLabel, { color: colors.icon }]}>
-                  Роль
-                </Text>
-                <Text style={[styles.infoValue, { color: colors.text }]}>
-                  {getRole()}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Статус Premium */}
-          <View style={[styles.infoCard, { 
-            backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)' 
-          }]}>
-            <View style={styles.infoRow}>
-              <View style={styles.infoIcon}>
-                <Ionicons 
-                  name={isPremium ? "star" : "star-outline"} 
-                  size={20} 
-                  color={isPremium ? colors.tint : colors.icon} 
-                />
-              </View>
-              <View style={styles.infoContent}>
-                <Text style={[styles.infoLabel, { color: colors.icon }]}>
-                  Premium статус
-                </Text>
-                <Text style={[styles.infoValue, { color: colors.text }]}>
-                  {isPremium ? "Активен" : "Не активен"}
-                </Text>
-              </View>
-              {isPremium && (
-                <View style={[styles.premiumBadge, { backgroundColor: colors.tint }]}>
-                  <Text style={styles.premiumBadgeText}>PRO</Text>
-                </View>
-              )}
-            </View>
-          </View>
-        </View>
+          <ProfileInfoCard
+            icon={isPremium ? "star" : "star-outline"}
+            label="Premium статус"
+            value={isPremium ? "Активен" : "Не активен"}
+            badge={isPremium ? "PRO" : undefined}
+            iconColor={isPremium ? colors.tint : undefined}
+            isPremium={isPremium}
+          />
+        </ProfileSection>
 
         {/* Действия */}
-        <View style={styles.actionsSection}>
-          <Text style={[styles.sectionLabel, { color: colors.text }]}>
-            Действия
-          </Text>
-          
-          <Pressable
-            style={({ pressed }) => [
-              styles.actionButton,
-              { 
-                backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
-                transform: [{ scale: pressed ? 0.98 : 1 }]
-              }
-            ]}
+        <ProfileSection title="Действия">
+          <ProfileActionButton
+            icon="create-outline"
+            title="Редактировать профиль"
             onPress={() => console.log('Редактировать профиль')}
-          >
-            <View style={styles.actionRow}>
-              <View style={styles.actionIcon}>
-                <Ionicons name="create-outline" size={22} color={colors.icon} />
-              </View>
-              <Text style={[styles.actionText, { color: colors.text }]}>
-                Редактировать профиль
-              </Text>
-              <Ionicons name="chevron-forward" size={18} color={colors.icon} />
-            </View>
-          </Pressable>
+          />
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.actionButton,
-              { 
-                backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
-                transform: [{ scale: pressed ? 0.98 : 1 }]
-              }
-            ]}
+          <ProfileActionButton
+            icon={isPinCodeSet ? "lock-closed" : "lock-open-outline"}
+            title={isPinCodeSet ? 'Изменить PIN-код' : 'Включить PIN-код'}
+            onPress={handlePinCodeAction}
+          />
+
+          <ProfileActionButton
+            icon="settings-outline"
+            title="Настройки"
             onPress={() => console.log('Настройки')}
-          >
-            <View style={styles.actionRow}>
-              <View style={styles.actionIcon}>
-                <Ionicons name="settings-outline" size={22} color={colors.icon} />
-              </View>
-              <Text style={[styles.actionText, { color: colors.text }]}>
-                Настройки
+          />
+
+          {/* Кнопка апгрейда для не-премиум пользователей */}
+          {!isPremium && (
+            <ProfileActionButton
+              icon="rocket-outline"
+              title="Перейти на Premium"
+              onPress={handleUpgradeToPremium}
+            />
+          )}
+        </ProfileSection>
+
+        {/* Премиум секция для премиум пользователей */}
+        {isPremium && (
+          <ProfileSection title="Премиум возможности">
+            <View style={[styles.premiumSection, { backgroundColor: colors.tint + '15' }]}>
+              <Ionicons name="diamond" size={32} color={colors.tint} style={styles.premiumIcon} />
+              <Text style={[styles.premiumTitle, { color: colors.tint }]}>
+                Премиум активен
               </Text>
-              <Ionicons name="chevron-forward" size={18} color={colors.icon} />
+              <Text style={[styles.premiumSubtitle, { color: colors.icon }]}>
+                Вы используете все возможности приложения
+              </Text>
+              
+              <View style={styles.premiumBenefits}>
+                <View style={styles.benefitItem}>
+                  <Ionicons name="checkmark-circle" size={20} color={colors.tint} />
+                  <Text style={[styles.benefitText, { color: colors.text }]}>
+                    Расширенная аналитика расходов
+                  </Text>
+                </View>
+                <View style={styles.benefitItem}>
+                  <Ionicons name="checkmark-circle" size={20} color={colors.tint} />
+                  <Text style={[styles.benefitText, { color: colors.text }]}>
+                    Неограниченное количество категорий
+                  </Text>
+                </View>
+                <View style={styles.benefitItem}>
+                  <Ionicons name="checkmark-circle" size={20} color={colors.tint} />
+                  <Text style={[styles.benefitText, { color: colors.text }]}>
+                    Экспорт данных в PDF/Excel
+                  </Text>
+                </View>
+                <View style={styles.benefitItem}>
+                  <Ionicons name="checkmark-circle" size={20} color={colors.tint} />
+                  <Text style={[styles.benefitText, { color: colors.text }]}>
+                    Приоритетная поддержка
+                  </Text>
+                </View>
+              </View>
             </View>
-          </Pressable>
-        </View>
+          </ProfileSection>
+        )}
 
         {/* Кнопка выхода */}
         <Pressable
@@ -206,102 +235,38 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingVertical: 20,
   },
-  profileCard: {
-    marginHorizontal: 20,
-    marginBottom: 24,
-    padding: 24,
-    borderRadius: 20,
+  premiumSection: {
+    borderRadius: 16,
+    padding: 20,
     alignItems: 'center',
   },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+  premiumIcon: {
+    marginBottom: 12,
+  },
+  premiumTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  premiumSubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
     marginBottom: 16,
   },
-  avatarText: {
-    fontSize: 32,
-    fontWeight: '600',
-    color: '#fff',
+  premiumBenefits: {
+    width: '100%',
   },
-  userName: {
-    fontSize: 24,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  userEmail: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  infoSection: {
-    marginHorizontal: 20,
-    marginBottom: 24,
-  },
-  sectionLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 12,
-    marginLeft: 4,
-  },
-  infoCard: {
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 8,
-  },
-  infoRow: {
+  benefitItem: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  infoIcon: {
-    width: 40,
-    alignItems: 'center',
-  },
-  infoContent: {
-    flex: 1,
-    marginLeft: 8,
-  },
-  infoLabel: {
-    fontSize: 14,
-    marginBottom: 2,
-  },
-  infoValue: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  premiumBadge: {
+    marginBottom: 8,
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
   },
-  premiumBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  actionsSection: {
-    marginHorizontal: 20,
-    marginBottom: 24,
-  },
-  actionButton: {
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 8,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  actionIcon: {
-    width: 40,
-    alignItems: 'center',
-  },
-  actionText: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '500',
+  benefitText: {
+    fontSize: 14,
     marginLeft: 8,
+    flex: 1,
   },
   logoutButton: {
     flexDirection: 'row',

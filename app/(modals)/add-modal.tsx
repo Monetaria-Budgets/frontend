@@ -1,4 +1,5 @@
-import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+// app/(modals)/add.tsx
+import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, Modal, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -6,6 +7,7 @@ import { Colors } from '@/constants/theme';
 import { useState, useEffect } from 'react';
 import DateTimePickerModal from '@/components/modals/DateTimePickerModal';
 import CategoryPickerModal from '@/components/modals/CategoryPickerModal';
+import { operationService } from '@/services/operationService';
 
 export default function AddModal() {
   const router = useRouter();
@@ -19,6 +21,7 @@ export default function AddModal() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Очищаем категорию при смене типа операции
   useEffect(() => {
@@ -53,6 +56,53 @@ export default function AddModal() {
     setIsIncome(income);
   };
 
+  const handleSave = async () => {
+    if (!amount || parseFloat(amount) <= 0) {
+      Alert.alert('Ошибка', 'Введите корректную сумму');
+      return;
+    }
+
+    if (!category) {
+      Alert.alert('Ошибка', isIncome ? 'Введите название дохода' : 'Выберите категорию');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      // ✅ Упрощенная логика: просто создаем операцию
+      // Категория будет автоматически создана на бэкенде если нужно
+      const operationData = {
+        amount: parseFloat(amount),
+        category: category,
+        description: description || undefined,
+        operation_type_id: isIncome ? 1 : 2,
+        created_at: selectedDate.toISOString(),
+      };
+
+      const result = await operationService.createOperation(operationData);
+
+      Alert.alert('Успех', 'Операция успешно добавлена', [
+        {
+          text: 'OK',
+          onPress: () => {
+            setAmount('');
+            setCategory('');
+            setDescription('');
+            setIsIncome(false);
+            setSelectedDate(new Date());
+            router.back();
+          },
+        },
+      ]);
+    } catch (error: any) {
+      console.error('Error saving operation:', error);
+      Alert.alert('Ошибка', error.message || 'Не удалось сохранить операцию');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <KeyboardAvoidingView 
       style={[styles.container, { backgroundColor: colors.background }]}
@@ -69,6 +119,7 @@ export default function AddModal() {
               <Pressable 
                 onPress={() => router.back()}
                 style={styles.iconButton}
+                disabled={isLoading}
               >
                 <Ionicons name="close" size={22} color={colors.icon} />
               </Pressable>
@@ -78,10 +129,15 @@ export default function AddModal() {
               </Text>
 
               <Pressable
-                onPress={() => console.log('Сохранить')}
+                onPress={handleSave}
                 style={styles.iconButton}
+                disabled={isLoading}
               >
-                <Ionicons name="checkmark" size={22} color={colors.tint} />
+                {isLoading ? (
+                  <Ionicons name="hourglass" size={22} color={colors.icon} />
+                ) : (
+                  <Ionicons name="checkmark" size={22} color={colors.tint} />
+                )}
               </Pressable>
             </View>
           )
@@ -110,6 +166,7 @@ export default function AddModal() {
               keyboardType="numeric"
               autoFocus
               returnKeyType="next"
+              editable={!isLoading}
             />
             <Text style={[styles.currency, { color: colors.icon }]}>₽</Text>
           </View>
@@ -128,6 +185,7 @@ export default function AddModal() {
                 }]
               ]}
               onPress={() => handleTypeChange(false)}
+              disabled={isLoading}
             >
               <Ionicons 
                 name="arrow-down" 
@@ -151,6 +209,7 @@ export default function AddModal() {
                 }]
               ]}
               onPress={() => handleTypeChange(true)}
+              disabled={isLoading}
             >
               <Ionicons 
                 name="arrow-up" 
@@ -179,6 +238,7 @@ export default function AddModal() {
                 backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)' 
               }]}
               onPress={() => setShowCategoryPicker(true)}
+              disabled={isLoading}
             >
               <View style={styles.inputRow}>
                 <Ionicons name="pricetag" size={20} color={colors.icon} />
@@ -190,6 +250,7 @@ export default function AddModal() {
                     onPress={handleClearCategory}
                     style={styles.clearButton}
                     hitSlop={8}
+                    disabled={isLoading}
                   >
                     <Ionicons name="close-circle" size={20} color={colors.icon} />
                   </Pressable>
@@ -212,12 +273,14 @@ export default function AddModal() {
                   value={category}
                   onChangeText={setCategory}
                   returnKeyType="next"
+                  editable={!isLoading}
                 />
                 {category ? (
                   <Pressable 
                     onPress={handleClearCategory}
                     style={styles.clearButton}
                     hitSlop={8}
+                    disabled={isLoading}
                   >
                     <Ionicons name="close-circle" size={20} color={colors.icon} />
                   </Pressable>
@@ -241,12 +304,14 @@ export default function AddModal() {
                 multiline
                 returnKeyType="done"
                 blurOnSubmit={true}
+                editable={!isLoading}
               />
               {description ? (
                 <Pressable 
                   onPress={() => setDescription('')}
                   style={styles.clearButton}
                   hitSlop={8}
+                  disabled={isLoading}
                 >
                   <Ionicons name="close-circle" size={20} color={colors.icon} />
                 </Pressable>
@@ -260,6 +325,7 @@ export default function AddModal() {
               backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)' 
             }]}
             onPress={() => setShowDatePicker(true)}
+            disabled={isLoading}
           >
             <View style={styles.inputRow}>
               <Ionicons name="calendar" size={20} color={colors.icon} />
@@ -293,6 +359,7 @@ export default function AddModal() {
                   }
                 ]}
                 onPress={() => setAmount(quickAmount.toString())}
+                disabled={isLoading}
               >
                 <Text style={[styles.quickAmountText, { color: colors.text }]}>
                   {quickAmount}₽
@@ -472,6 +539,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   bottomSpacer: {
-    height: 300, // Достаточно места для скролла
+    height: 300,
   },
 });

@@ -1,12 +1,14 @@
+// app/(tabs)/_layout.tsx
 import { Tabs, useRouter } from 'expo-router';
 import React from 'react';
 
 import { HapticTab } from '@/components/haptic-tab';
+import { TabsHeader } from '@/components/tabs-header';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View, StyleSheet } from 'react-native';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -29,44 +31,23 @@ export default function TabLayout() {
         tabBarIconStyle: {
           marginBottom: -4,
         },
-        headerLeft: () => (
-          <Pressable
-            onPress={() => {
-              router.push('/(screens)/profile');
-            }}
-            hitSlop={10}
-          >
-            <MaterialIcons
-              name="account-circle"
-              size={30}
-              color={Colors[colorScheme ?? 'light'].text}
-              style={{ paddingHorizontal: 10 }}
-            />
-          </Pressable>
-        ),
+        // Устанавливаем общий хедер для всех табов
+        header: () => <TabsHeader />,
       }}>
+      
       <Tabs.Screen
         name="index"
         options={{
           title: 'Главная',
           tabBarIcon: ({ color, focused }) => (
-            <View style={{
-              flex: 1,
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4,
-            }}>
+            <View style={styles.tabIconContainer}>
               <Ionicons name="home" size={24} color={color} />
               <Text
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                style={{
-                  fontSize: 12,
-                  color: color,
-                  fontWeight: focused ? '600' : '400',
-                  textAlign: 'center',
-                  width: 80,
-                }}
+                style={[
+                  styles.tabText,
+                  { color: color },
+                  focused && styles.tabTextFocused
+                ]}
               >
                 Главная
               </Text>
@@ -74,28 +55,20 @@ export default function TabLayout() {
           ),
         }}
       />
+      
       <Tabs.Screen
         name="history"
         options={{
           title: 'История',
           tabBarIcon: ({ color, focused }) => (
-            <View style={{
-              flex: 1,
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4,
-            }}>
-             <Ionicons name="time-sharp" size={24} color={color} />
-             <Text
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                style={{
-                  fontSize: 12,
-                  color: color,
-                  fontWeight: focused ? '600' : '400',
-                  textAlign: 'center',
-                  width: 80,
-                }}
+            <View style={styles.tabIconContainer}>
+              <Ionicons name="time-sharp" size={24} color={color} />
+              <Text
+                style={[
+                  styles.tabText,
+                  { color: color },
+                  focused && styles.tabTextFocused
+                ]}
               >
                 История
               </Text>
@@ -103,6 +76,7 @@ export default function TabLayout() {
           ),
         }}
       />
+      
       <Tabs.Screen
         name="add"
         options={{
@@ -110,44 +84,30 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <Pressable
               onPress={() => router.push('/(modals)/add-modal')}
-              style={{
-                width: 60,
-                height: 60,
-                borderRadius: 30,
-                backgroundColor: Colors[colorScheme ?? 'light'].tint,
-                alignItems: 'center',
-                justifyContent: 'center',
-                top: -30,
-                position: 'absolute',
-              }}
+              style={[
+                styles.addButton,
+                { backgroundColor: Colors[colorScheme ?? 'light'].tint }
+              ]}
             >
               <Ionicons name="add" size={32} color="#fff" />
             </Pressable>
           ),
         }}
       />
+      
       <Tabs.Screen
         name="statistics"
         options={{
           title: 'Статистика',
           tabBarIcon: ({ color, focused }) => (
-            <View style={{
-              flex: 1,
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4,
-            }}>
+            <View style={styles.tabIconContainer}>
               <Ionicons name="stats-chart" size={24} color={color} />
               <Text
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                style={{
-                  fontSize: 12,
-                  color: color,
-                  fontWeight: focused ? '600' : '400',
-                  textAlign: 'center',
-                  width: 80,
-                }}
+                style={[
+                  styles.tabText,
+                  { color: color },
+                  focused && styles.tabTextFocused
+                ]}
               >
                 Статистика
               </Text>
@@ -155,28 +115,20 @@ export default function TabLayout() {
           ),
         }}
       />
+      
       <Tabs.Screen
         name="currencies"
         options={{
           title: 'Валюты',
           tabBarIcon: ({ color, focused }) => (
-            <View style={{
-              flex: 1,
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4,
-            }}>
+            <View style={styles.tabIconContainer}>
               <MaterialIcons name="currency-exchange" size={24} color={color} />
               <Text
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                style={{
-                  fontSize: 12,
-                  color: color,
-                  fontWeight: focused ? '600' : '400',
-                  textAlign: 'center',
-                  width: 80,
-                }}
+                style={[
+                  styles.tabText,
+                  { color: color },
+                  focused && styles.tabTextFocused
+                ]}
               >
                 Валюты
               </Text>
@@ -187,3 +139,30 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  tabIconContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  tabText: {
+    fontSize: 12,
+    fontWeight: '400',
+    textAlign: 'center',
+    width: 80,
+  },
+  tabTextFocused: {
+    fontWeight: '600',
+  },
+  addButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    top: -30,
+    position: 'absolute',
+  },
+});
