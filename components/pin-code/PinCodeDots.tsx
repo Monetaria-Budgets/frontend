@@ -35,13 +35,14 @@ const styles = StyleSheet.create({
   pinDotsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom: 30,
+    marginBottom: 40,
+    marginTop: 20,
   },
   pinDot: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    marginHorizontal: 10,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    marginHorizontal: 12,
     borderWidth: 2,
   },
 });

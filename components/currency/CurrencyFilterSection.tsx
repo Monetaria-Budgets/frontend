@@ -1,3 +1,4 @@
+// app/(tabs)/currency/components/CurrencyFilterSection.tsx
 import React, { useState } from 'react';
 import { View, Pressable, Text, StyleSheet, TextInput } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -20,20 +21,20 @@ export const CurrencyFilterSection = () => {
   };
 
   return (
-    <View style={[styles.filterContainer, { backgroundColor: colors.card }]}>
+    <View style={[styles.filterContainer, { backgroundColor: colors.tint }]}>
       {/* Строка поиска */}
       <View style={styles.searchRow}>
-        <View style={[styles.searchContainer, { backgroundColor: colors.background }]}>
+        <View style={[styles.searchContainer, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
           <Ionicons 
             name="search" 
             size={20} 
-            color={colors.text} 
+            color="rgba(255,255,255,0.8)" 
             style={styles.searchIcon}
           />
           <TextInput
-            style={[styles.searchInput, { color: colors.text }]}
+            style={[styles.searchInput, { color: 'white' }]}
             placeholder="Поиск валюты..."
-            placeholderTextColor={colors.text}
+            placeholderTextColor="rgba(255,255,255,0.7)"
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -42,7 +43,7 @@ export const CurrencyFilterSection = () => {
               <Ionicons 
                 name="close-circle" 
                 size={20} 
-                color={colors.text} 
+                color="rgba(255,255,255,0.7)" 
               />
             </Pressable>
           ) : null}
@@ -88,9 +89,10 @@ export const CurrencyFilterSection = () => {
 const styles = StyleSheet.create({
   filterContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+    height: 120,
   },
   searchRow: {
     marginBottom: 12,
@@ -100,7 +102,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 12,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
   },
   searchIcon: {
     marginRight: 8,
@@ -109,6 +111,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     padding: 0,
+    fontWeight: '500',
   },
   tabRow: {
     flexDirection: 'row',
@@ -118,25 +121,25 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: 10,
-    borderRadius: 12,
+    borderRadius: 20,
     borderWidth: 2,
   },
   tabButtonInactive: {
-    backgroundColor: 'transparent',
-    borderColor: 'rgba(0,0,0,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   tabButtonActive: {
-    backgroundColor: 'rgba(0,122,255,0.1)',
-    borderColor: '#007AFF',
+    backgroundColor: 'white',
+    borderColor: 'white',
   },
   tabButtonText: {
     fontSize: 14,
     fontWeight: '600',
   },
   tabButtonTextInactive: {
-    color: '#8E8E93',
+    color: 'white',
   },
   tabButtonTextActive: {
-    color: '#007AFF',
+    color: '#007AFF', // или colors.tint если нужен точный цвет
   },
 });

@@ -21,12 +21,13 @@ const PinCodeHeader: React.FC<PinCodeHeaderProps> = ({
 
   return (
     <View style={styles.header}>
-      <Ionicons 
-        name={icon as any}
-        size={48} 
-        color={colors.tint} 
-        style={styles.lockIcon}
-      />
+      <View style={[styles.iconContainer, { backgroundColor: colors.tint + '20' }]}>
+        <Ionicons 
+          name={icon as any}
+          size={32} 
+          color={colors.tint} 
+        />
+      </View>
       <Text style={[styles.title, { color: colors.text }]}>
         {title}
       </Text>
@@ -40,14 +41,19 @@ const PinCodeHeader: React.FC<PinCodeHeaderProps> = ({
 const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 30,
   },
-  lockIcon: {
-    marginBottom: 20,
+  iconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
   },
   title: {
     fontSize: 24,
-    fontWeight: '600',
+    fontWeight: '700',
     textAlign: 'center',
     marginBottom: 8,
   },
@@ -55,6 +61,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
     lineHeight: 22,
+    opacity: 0.7,
   },
 });
 

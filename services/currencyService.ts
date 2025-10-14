@@ -7,6 +7,7 @@ export interface CurrencyRate {
   symbol: string;
   nominal: number;
   rate: string;
+  previousRate: string; // Добавляем предыдущий курс
   change: string;
   changePercentage: string;
   isPopular: boolean;

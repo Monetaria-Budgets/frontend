@@ -26,16 +26,17 @@ const PinCodeKeypadButton: React.FC<PinCodeKeypadButtonProps> = ({
       style={({ pressed }) => [
         styles.keypadButton,
         { 
-          backgroundColor: pressed ? colors.border : colors.card,
+          backgroundColor: pressed ? colors.tint + '20' : 'transparent',
+          borderColor: colors.tint,
           transform: [{ scale: pressed ? 0.95 : 1 }] 
         }
       ]}
       onPress={() => onPress(value)}
     >
       {isIcon ? (
-        <Ionicons name={iconName as any} size={24} color={colors.text} />
+        <Ionicons name={iconName as any} size={28} color={colors.tint} />
       ) : (
-        <Text style={[styles.keypadNumber, { color: colors.text }]}>{value}</Text>
+        <Text style={[styles.keypadNumber, { color: colors.tint }]}>{value}</Text>
       )}
     </Pressable>
   );
@@ -43,16 +44,15 @@ const PinCodeKeypadButton: React.FC<PinCodeKeypadButtonProps> = ({
 
 const styles = StyleSheet.create({
   keypadButton: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 75,
+    height: 75,
+    borderRadius: 37.5,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
+    borderWidth: 2,
   },
   keypadNumber: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '400',
   },
 });

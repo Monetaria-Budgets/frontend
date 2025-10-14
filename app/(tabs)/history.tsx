@@ -15,8 +15,8 @@ import { ThemedGradientView } from '@/components/themed-gradient-view';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { operationService, Operation } from '@/services/operationService';
-import { FilterSection } from '@/components/history/FilterSection';
 import { DaySection } from '@/components/history/DaySection';
+import { FilterSection } from '@/components/history/FilterSection';
 
 interface GroupedOperations {
   [key: string]: Operation[];

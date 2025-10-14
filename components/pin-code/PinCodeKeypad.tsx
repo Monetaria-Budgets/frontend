@@ -69,11 +69,12 @@ const PinCodeKeypad: React.FC<PinCodeKeypadProps> = ({
 const styles = StyleSheet.create({
   keypad: {
     marginHorizontal: 20,
+    marginBottom: 20,
   },
   keypadRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 20,
   },
 });
 

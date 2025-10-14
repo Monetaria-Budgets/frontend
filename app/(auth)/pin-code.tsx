@@ -264,6 +264,7 @@ const styles = StyleSheet.create({
   forgotPinButton: {
     marginTop: 30,
     alignItems: 'center',
+    padding: 12,
   },
   forgotPinText: {
     fontSize: 16,
@@ -272,6 +273,7 @@ const styles = StyleSheet.create({
   cancelButton: {
     marginTop: 20,
     alignItems: 'center',
+    padding: 12,
   },
   cancelText: {
     fontSize: 16,
