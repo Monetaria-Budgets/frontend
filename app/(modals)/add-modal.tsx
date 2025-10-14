@@ -56,6 +56,19 @@ export default function AddModal() {
     setIsIncome(income);
   };
 
+  // 🔥 ИСПРАВЛЕНИЕ: Функция для форматирования даты в строку без конвертации в UTC
+  const formatDateForBackend = (date: Date): string => {
+    // Создаем строку в формате YYYY-MM-DD HH:mm:ss в локальном времени
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  };
+
   const handleSave = async () => {
     if (!amount || parseFloat(amount) <= 0) {
       Alert.alert('Ошибка', 'Введите корректную сумму');
@@ -70,15 +83,19 @@ export default function AddModal() {
     try {
       setIsLoading(true);
 
-      // ✅ Упрощенная логика: просто создаем операцию
-      // Категория будет автоматически создана на бэкенде если нужно
+      // 🔥 ИСПРАВЛЕНИЕ: Используем нашу функцию вместо toISOString()
       const operationData = {
         amount: parseFloat(amount),
         category: category,
         description: description || undefined,
         operation_type_id: isIncome ? 1 : 2,
-        created_at: selectedDate.toISOString(),
+        created_at: formatDateForBackend(selectedDate), // 🔥 ТЕПЕРЬ В ЛОКАЛЬНОМ ВРЕМЕНИ
       };
+
+      console.log('📤 Saving operation with date:', {
+        selectedDate: selectedDate.toString(),
+        formattedForBackend: operationData.created_at
+      });
 
       const result = await operationService.createOperation(operationData);
 
