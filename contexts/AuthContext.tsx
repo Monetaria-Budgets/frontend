@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";;
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
+import { API_URL } from "@/config";
 
 type User = {
     id: number;
@@ -53,7 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const login = async (login: string, password: string) => {
         try {
-            const res = await axios.post("http://192.168.1.181:3000/auth/login", {
+            const res = await axios.post(`${API_URL}/auth/login`, {
                 login,
                 password,
             });
@@ -72,7 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const register = async (login: string, email: string, password: string) => {
         try {
-            await axios.post("http://192.168.1.181:3000/auth/register", {
+            await axios.post(`${API_URL}/auth/register`, {
                 login, 
                 email, 
                 password,
@@ -85,7 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const logout = async () => {
         try {
             await axios.post(
-                "http://192.168.1.181:3000/auth/logout",
+                `${API_URL}/auth/logout`,
                 {},
                 { headers: { Authorization: `Bearer ${token}` } }
             );

@@ -1,6 +1,7 @@
 // services/operationService.ts
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_URL } from '@/config';
 
 export interface CreateOperationData {
   amount: number;
@@ -25,7 +26,6 @@ export interface Category {
   name: string;
 }
 
-const API_BASE_URL = 'http://192.168.1.181:3000';
 
 export const operationService = {
   async createOperation(operationData: CreateOperationData) {
@@ -45,7 +45,7 @@ export const operationService = {
 
       
       const response = await axios.post(
-        `${API_BASE_URL}/operations`,
+        `${API_URL}/operations`,
         formattedData, 
         {
           headers: {
@@ -86,7 +86,7 @@ export const operationService = {
       }
 
       
-      const response = await axios.get(`${API_BASE_URL}/categories/user`, {
+      const response = await axios.get(`${API_URL}/categories/user`, {
         headers: { Authorization: `Bearer ${token}` },
         timeout: 5000,
       });
@@ -138,7 +138,7 @@ export const operationService = {
       // Пытаемся создать новую категорию
       console.log('Создаем новую категорию:', name);
       const response = await axios.post(
-        `${API_BASE_URL}/categories/user`,
+        `${API_URL}/categories/user`,
         { name },
         { 
           headers: { Authorization: `Bearer ${token}` },
@@ -190,7 +190,7 @@ export const operationService = {
       if (filters?.type) params.append('type', filters.type);
 
       const queryString = params.toString();
-      const url = `${API_BASE_URL}/operations/user${queryString ? `?${queryString}` : ''}`;
+      const url = `${API_URL}/operations/user${queryString ? `?${queryString}` : ''}`;
 
       const response = await axios.get(url, {
         headers: { 
