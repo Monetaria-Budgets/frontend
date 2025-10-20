@@ -15,6 +15,7 @@ import { ThemedGradientView } from '@/components/themed-gradient-view';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { operationService, Operation } from '@/services/operationService';
+import { Category } from '@/services/categoryService';
 import { DaySection } from '@/components/history/DaySection';
 import { FilterSection } from '@/components/history/FilterSection';
 
@@ -26,6 +27,7 @@ export default function HistoryScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const [operations, setOperations] = useState<Operation[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [groupedOperations, setGroupedOperations] = useState<GroupedOperations>({});
   const [refreshing, setRefreshing] = useState(false);
   const [filters, setFilters] = useState({
@@ -45,7 +47,7 @@ export default function HistoryScreen() {
   const normalizeOperations = (operations: any[]): Operation[] => {
     return operations.map(op => ({
       ...op,
-      operation: op.operation === 'Доход' ? 'income' : 'expense',
+      operation: operationService.normalizeOperationType(op.operation),
       amount: parseFloat(op.amount),
       created_at: op.created_at
     }));
@@ -56,17 +58,59 @@ export default function HistoryScreen() {
     const grouped: GroupedOperations = {};
     
     ops.forEach(operation => {
-      const date = new Date(operation.created_at).toISOString().split('T')[0];
-      if (!grouped[date]) {
-        grouped[date] = [];
+      try {
+        let operationDate: Date;
+        
+        // Обрабатываем разные форматы дат
+        if (operation.created_at.includes('T')) {
+          // ISO format: 2024-10-21T10:30:00
+          operationDate = new Date(operation.created_at);
+        } else if (operation.created_at.includes(' ')) {
+          // SQL format: 2024-10-21 10:30:00
+          operationDate = new Date(operation.created_at.replace(' ', 'T'));
+        } else {
+          // Already just date: 2024-10-21
+          operationDate = new Date(operation.created_at + 'T00:00:00');
+        }
+        
+        // Проверяем валидность даты
+        if (isNaN(operationDate.getTime())) {
+          console.warn('Invalid date in operation:', operation.created_at);
+          return;
+        }
+        
+        // 🔥 ВАЖНО: Получаем локальную дату (без времени) для группировки
+        const localDate = new Date(
+          operationDate.getFullYear(), 
+          operationDate.getMonth(), 
+          operationDate.getDate()
+        );
+        
+        // Форматируем дату как YYYY-MM-DD для ключа
+        const year = localDate.getFullYear();
+        const month = String(localDate.getMonth() + 1).padStart(2, '0');
+        const day = String(localDate.getDate()).padStart(2, '0');
+        const dateKey = `${year}-${month}-${day}`;
+        
+        if (!grouped[dateKey]) {
+          grouped[dateKey] = [];
+        }
+        grouped[dateKey].push(operation);
+      } catch (error) {
+        console.error('Error grouping operation by date:', error, operation);
       }
-      grouped[date].push(operation);
     });
     
     // Сортируем операции внутри дня по времени (новые сверху)
     Object.keys(grouped).forEach(date => {
       grouped[date].sort((a, b) => {
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        try {
+          const dateA = new Date(a.created_at);
+          const dateB = new Date(b.created_at);
+          return dateB.getTime() - dateA.getTime();
+        } catch (error) {
+          return 0;
+        }
       });
     });
     
@@ -107,13 +151,28 @@ export default function HistoryScreen() {
     return filtered;
   };
 
+  const loadCategories = async () => {
+    try {
+      const categoriesData = await operationService.getCategories();
+      setCategories(categoriesData);
+    } catch (error) {
+      console.error('Error loading categories:', error);
+      setCategories([]);
+    }
+  };
+
   const loadOperations = async (currentFilters = filters) => {
     try {
-      const operationsData = await operationService.getUserOperations();
+      const [operationsData, categoriesData] = await Promise.all([
+        operationService.getUserOperations(),
+        operationService.getCategories()
+      ]);
+      
       const normalizedData = normalizeOperations(operationsData);
       const filteredData = applyFilters(normalizedData, currentFilters);
       
       setOperations(normalizedData);
+      setCategories(categoriesData);
       setGroupedOperations(groupOperationsByDate(filteredData));
     } catch (error: any) {
       console.error('Error loading operations:', error);
@@ -136,6 +195,10 @@ export default function HistoryScreen() {
   const handleFilterChange = (newFilters: any) => {
     setFilters(newFilters);
     loadOperations(newFilters);
+  };
+
+  const handleOperationUpdated = () => {
+    loadOperations();
   };
 
   const sortedDates = Object.keys(groupedOperations).sort((a, b) => 
@@ -173,7 +236,7 @@ export default function HistoryScreen() {
 
       {/* Основной контент с фильтрами и списком */}
       <View style={styles.content}>
-        {/* Фильтры - теперь они точно будут видны */}
+        {/* Фильтры */}
         <View style={styles.filtersWrapper}>
           <FilterSection 
             onFilterChange={handleFilterChange} 
@@ -228,6 +291,8 @@ export default function HistoryScreen() {
                   key={date} 
                   date={date} 
                   operations={groupedOperations[date]} 
+                  categories={categories}
+                  onOperationUpdated={handleOperationUpdated}
                 />
               ))
             )}
@@ -244,7 +309,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingTop: 110, 
+    paddingTop: 110,
   },
   filtersWrapper: {
   },

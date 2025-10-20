@@ -138,6 +138,12 @@ export default function ProfileScreen() {
           />
 
           <ProfileActionButton
+            icon="pricetags-outline"
+            title="Мои категории"
+            onPress={() => router.push('/categories')}
+          />
+
+          <ProfileActionButton
             icon={isPinCodeSet ? "lock-closed" : "lock-open-outline"}
             title={isPinCodeSet ? 'Изменить PIN-код' : 'Включить PIN-код'}
             onPress={handlePinCodeAction}

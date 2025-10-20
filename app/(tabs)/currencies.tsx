@@ -42,6 +42,7 @@ function CurrencyScreenContent() {
   const isScrolling = useRef(false);
   const filterHeight = useRef(new Animated.Value(1)).current;
   const lastScrollDirection = useRef<'up' | 'down' | null>(null);
+  const scrollThreshold = useRef(5); // Минимальное изменение для срабатывания
 
   const headerOpacity = scrollY.interpolate({
     inputRange: [0, 60, 90],
@@ -51,7 +52,10 @@ function CurrencyScreenContent() {
 
   useFocusEffect(
     React.useCallback(() => {
-      // Можно добавить дополнительную логику при фокусе
+      // Сбрасываем фильтры при фокусе
+      showFilters();
+      lastScrollY.current = 0;
+      lastScrollDirection.current = null;
     }, [])
   );
 
@@ -79,25 +83,39 @@ function CurrencyScreenContent() {
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const currentScrollY = event.nativeEvent.contentOffset.y;
-    const scrollDirection = currentScrollY > lastScrollY.current ? 'down' : 'up';
+    const scrollDelta = currentScrollY - lastScrollY.current;
+    
+    // Игнорируем микроскроллы
+    if (Math.abs(scrollDelta) < scrollThreshold.current) {
+      lastScrollY.current = currentScrollY;
+      scrollY.setValue(currentScrollY);
+      return;
+    }
+
+    const scrollDirection = scrollDelta > 0 ? 'down' : 'up';
     const contentHeight = event.nativeEvent.contentSize.height;
     const layoutHeight = event.nativeEvent.layoutMeasurement.height;
     const isAtBottom = currentScrollY >= contentHeight - layoutHeight - 10;
+    const isAtTop = currentScrollY <= 0;
     
-    // Защита от дёргания: не меняем состояние если достигли дна и продолжаем скроллить вниз
-    if (isAtBottom && scrollDirection === 'down') {
+    // Защита от дёргания: не меняем состояние если достигли границ
+    if ((isAtBottom && scrollDirection === 'down') || (isAtTop && scrollDirection === 'up')) {
       lastScrollY.current = currentScrollY;
       scrollY.setValue(currentScrollY);
       return;
     }
     
-    // Защита от частых вызовов - меняем состояние только если направление изменилось
-    if (scrollDirection !== lastScrollDirection.current && !isScrolling.current) {
+    // Определяем изменение направления скролла
+    const directionChanged = scrollDirection !== lastScrollDirection.current;
+    
+    if (directionChanged && !isScrolling.current) {
       isScrolling.current = true;
       
-      if (scrollDirection === 'down' && currentScrollY > 50) {
+      if (scrollDirection === 'down' && currentScrollY > 30) {
+        // Скрываем фильтры при скролле вниз (после небольшого порога)
         hideFilters();
       } else if (scrollDirection === 'up') {
+        // Показываем фильтры при скролле вверх
         showFilters();
       }
       
@@ -109,6 +127,10 @@ function CurrencyScreenContent() {
   };
 
   const handleScrollEnd = () => {
+    isScrolling.current = false;
+  };
+
+  const handleMomentumScrollEnd = () => {
     isScrolling.current = false;
   };
 
@@ -201,7 +223,7 @@ function CurrencyScreenContent() {
             showsVerticalScrollIndicator={false}
             onScroll={handleScroll}
             onScrollEndDrag={handleScrollEnd}
-            onMomentumScrollEnd={handleScrollEnd}
+            onMomentumScrollEnd={handleMomentumScrollEnd}
             scrollEventThrottle={16}
           >
             <View style={styles.scrollContent}>

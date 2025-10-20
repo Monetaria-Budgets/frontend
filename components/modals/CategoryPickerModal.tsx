@@ -1,34 +1,30 @@
 // components/modals/CategoryPickerModal.tsx
-import { View, Text, Pressable, StyleSheet, Modal, ScrollView, Animated, PanResponder, Alert } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Modal, ScrollView, Animated, PanResponder } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { useState, useEffect, useRef } from 'react';
-import { operationService } from '@/services/operationService';
+import { useRouter } from 'expo-router';
 
 interface CategoryPickerModalProps {
   visible: boolean;
   onClose: () => void;
   onCategorySelect: (category: string) => void;
   selectedCategory: string;
-}
-
-interface Category {
-  id: number;
-  name: string;
+  userCategories: any[]; // Категории передаются из основной модалки
 }
 
 export default function CategoryPickerModal({
   visible,
   onClose,
   onCategorySelect,
-  selectedCategory
+  selectedCategory,
+  userCategories = [] // Дефолтное значение
 }: CategoryPickerModalProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const router = useRouter();
   const [tempCategory, setTempCategory] = useState(selectedCategory);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const panY = useRef(new Animated.Value(0)).current;
@@ -55,29 +51,6 @@ export default function CategoryPickerModal({
       },
     })
   ).current;
-
-  // 🆕 Сначала показываем дефолтные категории, потом загружаем пользовательские
-  useEffect(() => {
-    if (visible) {
-      // Сразу показываем дефолтные категории
-      setCategories(operationService.getDefaultCategories());
-      // Затем загружаем все категории
-      loadAllCategories();
-    }
-  }, [visible]);
-
-  const loadAllCategories = async () => {
-    try {
-      setIsLoading(true);
-      const allCategories = await operationService.getCategories();
-      setCategories(allCategories);
-    } catch (error: any) {
-      console.warn('Error loading categories, using defaults:', error.message);
-      // Уже показываем дефолтные, так что просто логируем ошибку
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   useEffect(() => {
     if (visible) {
@@ -122,34 +95,18 @@ export default function CategoryPickerModal({
     handleClose();
   };
 
+  const handleManageCategories = () => {
+    handleClose();
+    setTimeout(() => {
+      router.push('/categories');
+    }, 300);
+  };
+
   const translateY = panY.interpolate({
     inputRange: [0, 300],
     outputRange: [0, 300],
     extrapolate: 'clamp',
   });
-
-  // Функция для получения иконки по названию категории
-  const getCategoryIcon = (category: string) => {
-    const icons: { [key: string]: string } = {
-      'Еда': 'fast-food',
-      'Транспорт': 'car',
-      'Жилье': 'home',
-      'Магазины': 'cart',
-      'Здоровье': 'medical',
-      'Развлечения': 'game-controller',
-      'Одежда': 'shirt',
-      'Техника': 'phone-portrait',
-      'Путешествия': 'airplane',
-      'Образование': 'school',
-      'Коммуналка': 'bulb',
-      'Подписки': 'tv',
-      'Зарплата': 'cash',
-      'Премия': 'trophy',
-      'Подработка': 'briefcase',
-      'Другое': 'ellipsis-horizontal',
-    };
-    return icons[category] || 'pricetag';
-  };
 
   return (
     <Modal visible={visible} transparent={true} animationType="none" onRequestClose={handleCancel}>
@@ -166,7 +123,7 @@ export default function CategoryPickerModal({
           {...panResponder.panHandlers}
         >
           <View style={styles.dragHandleContainer}>
-            <View style={styles.dragHandle} />
+            <View style={[styles.dragHandle, { backgroundColor: colors.icon }]} />
           </View>
 
           <View style={styles.modalHeader}>
@@ -179,7 +136,7 @@ export default function CategoryPickerModal({
           </View>
 
           <ScrollView style={styles.categoriesList} showsVerticalScrollIndicator={false}>
-            {categories.map((category) => (
+            {userCategories.map((category) => (
               <Pressable
                 key={category.id}
                 style={({ pressed }) => [
@@ -188,34 +145,41 @@ export default function CategoryPickerModal({
                     backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
                     transform: [{ scale: pressed ? 0.98 : 1 }]
                   },
-                  tempCategory === category.name && [styles.categoryItemSelected, { backgroundColor: colors.tint }]
+                  tempCategory === category.name && [styles.categoryItemSelected, { backgroundColor: colors.tint + '20' }]
                 ]}
                 onPress={() => handleCategoryPress(category.name)}
               >
                 <View style={styles.categoryContent}>
-                  <Ionicons 
-                    name={getCategoryIcon(category.name) as any} 
-                    size={20} 
-                    color={tempCategory === category.name ? '#fff' : colors.icon} 
+                  <View 
+                    style={[
+                      styles.categoryColor,
+                      { backgroundColor: category.color }
+                    ]} 
                   />
                   <Text
                     style={[
                       styles.categoryText,
-                      { color: tempCategory === category.name ? '#fff' : colors.text },
+                      { color: colors.text },
                       tempCategory === category.name && styles.categoryTextSelected
                     ]}
                   >
                     {category.name}
                   </Text>
                 </View>
-                {tempCategory === category.name && <Ionicons name="checkmark" size={20} color="#fff" />}
+                {tempCategory === category.name && (
+                  <Ionicons name="checkmark" size={20} color={colors.tint} />
+                )}
               </Pressable>
             ))}
             
-            {isLoading && (
-              <View style={styles.loadingContainer}>
-                <Text style={[styles.loadingText, { color: colors.text }]}>
-                  Загрузка дополнительных категорий...
+            {userCategories.length === 0 && (
+              <View style={styles.emptyState}>
+                <Ionicons name="pricetag-outline" size={48} color={colors.icon} />
+                <Text style={[styles.emptyTitle, { color: colors.text }]}>
+                  Категорий пока нет
+                </Text>
+                <Text style={[styles.emptyText, { color: colors.icon }]}>
+                  Создайте категории для удобного отслеживания расходов
                 </Text>
               </View>
             )}
@@ -223,22 +187,34 @@ export default function CategoryPickerModal({
 
           <View style={styles.modalActions}>
             <Pressable
-              style={[styles.modalButton, { backgroundColor: 'rgba(122, 122, 122, 0.1)' }]}
-              onPress={handleCancel}
+              style={[styles.manageButton, { backgroundColor: 'rgba(122, 122, 122, 0.1)' }]}
+              onPress={handleManageCategories}
             >
-              <Text style={[styles.modalButtonText, { color: colors.text }]}>Отмена</Text>
+              <Ionicons name="settings-outline" size={18} color={colors.text} />
+              <Text style={[styles.manageButtonText, { color: colors.text }]}>
+                Управление категориями
+              </Text>
             </Pressable>
-            <Pressable 
-              style={[
-                styles.modalButton, 
-                { backgroundColor: colors.tint },
-                !tempCategory && { opacity: 0.5 }
-              ]} 
-              onPress={handleSave}
-              disabled={!tempCategory}
-            >
-              <Text style={styles.modalButtonText}>Готово</Text>
-            </Pressable>
+            
+            <View style={styles.confirmActions}>
+              <Pressable
+                style={[styles.confirmButton, { backgroundColor: 'rgba(122, 122, 122, 0.1)' }]}
+                onPress={handleCancel}
+              >
+                <Text style={[styles.confirmButtonText, { color: colors.text }]}>Отмена</Text>
+              </Pressable>
+              <Pressable 
+                style={[
+                  styles.confirmButton, 
+                  { backgroundColor: colors.tint },
+                  (!tempCategory || userCategories.length === 0) && { opacity: 0.5 }
+                ]} 
+                onPress={handleSave}
+                disabled={!tempCategory || userCategories.length === 0}
+              >
+                <Text style={styles.confirmButtonText}>Выбрать</Text>
+              </Pressable>
+            </View>
           </View>
         </Animated.View>
       </View>
@@ -260,17 +236,8 @@ const styles = StyleSheet.create({
     paddingBottom: 30, 
     maxHeight: '80%' 
   },
-  dragHandleContainer: { 
-    paddingVertical: 12, 
-    paddingHorizontal: 20, 
-    alignItems: 'center' 
-  },
-  dragHandle: { 
-    width: 40, 
-    height: 4, 
-    backgroundColor: 'rgba(0,0,0,0.2)', 
-    borderRadius: 2 
-  },
+  dragHandleContainer: { paddingVertical: 12, paddingHorizontal: 20, alignItems: 'center' },
+  dragHandle: { width: 40, height: 4, borderRadius: 2, opacity: 0.3 },
   modalHeader: { 
     flexDirection: 'row', 
     alignItems: 'center', 
@@ -280,26 +247,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, 
     borderBottomColor: 'rgba(0,0,0,0.1)' 
   },
-  modalTitle: { 
-    fontSize: 18, 
-    fontWeight: '600' 
-  },
-  modalCloseButton: { 
-    padding: 8 
-  },
-  categoriesList: { 
-    paddingHorizontal: 20, 
-    marginVertical: 16, 
-    maxHeight: 400 
-  },
-  loadingContainer: {
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: 14,
-    opacity: 0.7,
-  },
+  modalTitle: { fontSize: 18, fontWeight: '600' },
+  modalCloseButton: { padding: 8 },
+  categoriesList: { paddingHorizontal: 20, marginVertical: 16, maxHeight: 400 },
   categoryItem: { 
     flexDirection: 'row', 
     alignItems: 'center', 
@@ -309,40 +259,18 @@ const styles = StyleSheet.create({
     borderRadius: 12, 
     marginBottom: 8 
   },
-  categoryContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  categoryItemSelected: { 
-    shadowOffset: { width: 0, height: 2 }, 
-    shadowOpacity: 0.3, 
-    shadowRadius: 4, 
-    elevation: 4 
-  },
-  categoryText: { 
-    fontSize: 16, 
-    fontWeight: '500' 
-  },
-  categoryTextSelected: { 
-    fontWeight: '600' 
-  },
-  modalActions: { 
-    flexDirection: 'row', 
-    gap: 12, 
-    paddingHorizontal: 20, 
-    paddingTop: 10 
-  },
-  modalButton: { 
-    flex: 1, 
-    paddingVertical: 14, 
-    borderRadius: 12, 
-    alignItems: 'center' 
-  },
-  modalButtonText: { 
-    fontSize: 16, 
-    fontWeight: '600', 
-    color: 'white' 
-  },
+  categoryContent: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  categoryColor: { width: 20, height: 20, borderRadius: 10 },
+  categoryItemSelected: { borderWidth: 2, borderColor: 'rgba(74, 144, 226, 0.3)' },
+  categoryText: { fontSize: 16, fontWeight: '500' },
+  categoryTextSelected: { fontWeight: '600', color: '#4A90E2' },
+  emptyState: { alignItems: 'center', paddingVertical: 40, paddingHorizontal: 20 },
+  emptyTitle: { fontSize: 18, fontWeight: '600', marginTop: 16, marginBottom: 8, textAlign: 'center' },
+  emptyText: { fontSize: 14, textAlign: 'center', lineHeight: 20, opacity: 0.7 },
+  modalActions: { paddingHorizontal: 20, gap: 12 },
+  manageButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 12 },
+  manageButtonText: { fontSize: 16, fontWeight: '500' },
+  confirmActions: { flexDirection: 'row', gap: 12 },
+  confirmButton: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  confirmButtonText: { fontSize: 16, fontWeight: '600', color: 'white' },
 });

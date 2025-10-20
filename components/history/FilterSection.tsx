@@ -18,10 +18,13 @@ export const FilterSection = ({ onFilterChange, currentFilters, operations }: Fi
   const [showPeriodModal, setShowPeriodModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
 
-  // Получаем уникальные категории из операций
+  // 🔥 ФИКС: Получаем уникальные категории ТОЛЬКО из операций расходов
   const getUniqueCategories = () => {
-    const categories = operations.map(op => op.category);
+    // Фильтруем только расходы
+    const expenseOperations = operations.filter(op => op.operation === 'expense');
+    const categories = expenseOperations.map(op => op.category);
     const uniqueCategories = Array.from(new Set(categories));
+    
     return [
       { key: 'all', label: 'Все категории' },
       ...uniqueCategories.map(cat => ({ key: cat, label: cat }))
@@ -71,19 +74,19 @@ export const FilterSection = ({ onFilterChange, currentFilters, operations }: Fi
   };
 
   return (
-    <View style={[styles.filterContainer, { backgroundColor: colors.tint }]}>
+    <View style={[styles.filterContainer, { backgroundColor: colors.card }]}>
       {/* Первая строка - фильтр по типу операции */}
       <View style={styles.filterRow}>
         <Pressable
           style={[
             styles.typeFilterButton,
-            isTypeActive(null) ? styles.filterButtonActive : styles.filterButtonInactive
+            isTypeActive(null) ? [styles.filterButtonActive, { backgroundColor: colors.tint }] : styles.filterButtonInactive
           ]}
           onPress={() => handleTypeFilter(null)}
         >
           <Text style={[
             styles.filterButtonText,
-            isTypeActive(null) ? styles.filterButtonTextActive : styles.filterButtonTextInactive
+            isTypeActive(null) ? styles.filterButtonTextActive : { color: colors.text }
           ]}>
             Все
           </Text>
@@ -92,13 +95,18 @@ export const FilterSection = ({ onFilterChange, currentFilters, operations }: Fi
         <Pressable
           style={[
             styles.typeFilterButton,
-            isTypeActive('income') ? styles.filterButtonActive : styles.filterButtonInactive
+            isTypeActive('income') ? [styles.filterButtonActive, { backgroundColor: '#4CAF50' }] : styles.filterButtonInactive
           ]}
           onPress={() => handleTypeFilter('income')}
         >
+          <Ionicons 
+            name="arrow-down" 
+            size={16} 
+            color={isTypeActive('income') ? '#fff' : '#4CAF50'} 
+          />
           <Text style={[
             styles.filterButtonText,
-            isTypeActive('income') ? styles.filterButtonTextActive : styles.filterButtonTextInactive
+            isTypeActive('income') ? styles.filterButtonTextActive : { color: '#4CAF50' }
           ]}>
             Доходы
           </Text>
@@ -107,13 +115,18 @@ export const FilterSection = ({ onFilterChange, currentFilters, operations }: Fi
         <Pressable
           style={[
             styles.typeFilterButton,
-            isTypeActive('expense') ? styles.filterButtonActive : styles.filterButtonInactive
+            isTypeActive('expense') ? [styles.filterButtonActive, { backgroundColor: '#F44336' }] : styles.filterButtonInactive
           ]}
           onPress={() => handleTypeFilter('expense')}
         >
+          <Ionicons 
+            name="arrow-up" 
+            size={16} 
+            color={isTypeActive('expense') ? '#fff' : '#F44336'} 
+          />
           <Text style={[
             styles.filterButtonText,
-            isTypeActive('expense') ? styles.filterButtonTextActive : styles.filterButtonTextInactive
+            isTypeActive('expense') ? styles.filterButtonTextActive : { color: '#F44336' }
           ]}>
             Расходы
           </Text>
@@ -125,40 +138,40 @@ export const FilterSection = ({ onFilterChange, currentFilters, operations }: Fi
         <Pressable
           style={[
             styles.dropdownFilterButton,
-            isPeriodActive ? styles.filterButtonActive : styles.filterButtonInactive
+            isPeriodActive ? [styles.filterButtonActive, { backgroundColor: colors.tint }] : [styles.filterButtonInactive, { borderColor: colors.border }]
           ]}
           onPress={() => setShowPeriodModal(true)}
         >
           <Text style={[
             styles.filterButtonText,
-            isPeriodActive ? styles.filterButtonTextActive : styles.filterButtonTextInactive
+            isPeriodActive ? styles.filterButtonTextActive : { color: colors.text }
           ]}>
             {getPeriodLabel(currentFilters.period)}
           </Text>
           <Ionicons 
             name="chevron-down" 
             size={16} 
-            style={isPeriodActive ? styles.filterButtonTextActive : styles.filterButtonTextInactive}
+            color={isPeriodActive ? '#fff' : colors.icon}
           />
         </Pressable>
 
         <Pressable
           style={[
             styles.dropdownFilterButton,
-            isCategoryActive ? styles.filterButtonActive : styles.filterButtonInactive
+            isCategoryActive ? [styles.filterButtonActive, { backgroundColor: colors.tint }] : [styles.filterButtonInactive, { borderColor: colors.border }]
           ]}
           onPress={() => setShowCategoryModal(true)}
         >
           <Text style={[
             styles.filterButtonText,
-            isCategoryActive ? styles.filterButtonTextActive : styles.filterButtonTextInactive
+            isCategoryActive ? styles.filterButtonTextActive : { color: colors.text }
           ]}>
             {getCategoryLabel(currentFilters.category)}
           </Text>
           <Ionicons 
             name="chevron-down" 
             size={16} 
-            style={isCategoryActive ? styles.filterButtonTextActive : styles.filterButtonTextInactive}
+            color={isCategoryActive ? '#fff' : colors.icon}
           />
         </Pressable>
       </View>
@@ -188,8 +201,10 @@ export const FilterSection = ({ onFilterChange, currentFilters, operations }: Fi
 
 const styles = StyleSheet.create({
   filterContainer: {
+    paddingTop: 20,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
   },
   filterRow: {
     flexDirection: 'row',
@@ -198,10 +213,14 @@ const styles = StyleSheet.create({
   },
   typeFilterButton: {
     flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 2,
+    borderRadius: 12,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   dropdownFilterButton: {
     flex: 1,
@@ -210,25 +229,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 2,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   filterButtonInactive: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: 'transparent',
   },
   filterButtonActive: {
-    backgroundColor: 'white',
-    borderColor: 'white',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   filterButtonText: {
     fontSize: 14,
     fontWeight: '600',
   },
-  filterButtonTextInactive: {
-    color: 'white',
-  },
   filterButtonTextActive: {
-    color: '#007AFF', // tint color
+    color: '#fff',
   },
 });

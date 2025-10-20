@@ -1,5 +1,5 @@
 // app/(modals)/add.tsx
-import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, Modal, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 import DateTimePickerModal from '@/components/modals/DateTimePickerModal';
 import CategoryPickerModal from '@/components/modals/CategoryPickerModal';
 import { operationService } from '@/services/operationService';
+import { categoryService } from '@/services/categoryService';
 
 export default function AddModal() {
   const router = useRouter();
@@ -22,6 +23,22 @@ export default function AddModal() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [userCategories, setUserCategories] = useState<any[]>([]);
+
+  // Загружаем категории пользователя при монтировании
+  useEffect(() => {
+    loadUserCategories();
+  }, []);
+
+  const loadUserCategories = async () => {
+    try {
+      const categories = await categoryService.getCategories();
+      setUserCategories(categories);
+    } catch (error) {
+      console.error('Error loading user categories:', error);
+      setUserCategories([]);
+    }
+  };
 
   // Очищаем категорию при смене типа операции
   useEffect(() => {
@@ -52,13 +69,19 @@ export default function AddModal() {
     setCategory('');
   };
 
+  const handleClearDescription = () => {
+    setDescription('');
+  };
+
+  const handleClearDate = () => {
+    setSelectedDate(new Date());
+  };
+
   const handleTypeChange = (income: boolean) => {
     setIsIncome(income);
   };
 
-  // 🔥 ИСПРАВЛЕНИЕ: Функция для форматирования даты в строку без конвертации в UTC
   const formatDateForBackend = (date: Date): string => {
-    // Создаем строку в формате YYYY-MM-DD HH:mm:ss в локальном времени
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -83,19 +106,13 @@ export default function AddModal() {
     try {
       setIsLoading(true);
 
-      // 🔥 ИСПРАВЛЕНИЕ: Используем нашу функцию вместо toISOString()
       const operationData = {
         amount: parseFloat(amount),
         category: category,
         description: description || undefined,
         operation_type_id: isIncome ? 1 : 2,
-        created_at: formatDateForBackend(selectedDate), // 🔥 ТЕПЕРЬ В ЛОКАЛЬНОМ ВРЕМЕНИ
+        created_at: formatDateForBackend(selectedDate),
       };
-
-      console.log('📤 Saving operation with date:', {
-        selectedDate: selectedDate.toString(),
-        formattedForBackend: operationData.created_at
-      });
 
       const result = await operationService.createOperation(operationData);
 
@@ -118,6 +135,13 @@ export default function AddModal() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Получаем цвет выбранной категории
+  const getCategoryColor = () => {
+    if (!category || isIncome) return colors.tint;
+    const foundCategory = userCategories.find(cat => cat.name === category);
+    return foundCategory?.color || colors.tint;
   };
 
   return (
@@ -168,12 +192,10 @@ export default function AddModal() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
       >
-        {/* Главный блок с суммой */}
-        <View style={[styles.mainCard, { 
-          backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)' 
-        }]}>
+        {/* Сумма */}
+        <View style={[styles.amountCard, { backgroundColor: colors.card }]}>
           <Text style={[styles.amountLabel, { color: colors.text }]}>Сумма</Text>
-          <View style={styles.amountInputContainer}>
+          <View style={styles.amountRow}>
             <TextInput
               style={[styles.amountInput, { color: colors.text }]}
               placeholder="0"
@@ -182,36 +204,35 @@ export default function AddModal() {
               onChangeText={setAmount}
               keyboardType="numeric"
               autoFocus
-              returnKeyType="next"
               editable={!isLoading}
             />
             <Text style={[styles.currency, { color: colors.icon }]}>₽</Text>
           </View>
         </View>
 
-        {/* Переключатель Доход/Расход */}
-        <View style={styles.typeSection}>
-          <Text style={[styles.sectionLabel, { color: colors.text }]}>Тип операции</Text>
+        {/* Тип операции */}
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Тип операции</Text>
           <View style={styles.typeSelector}>
             <Pressable
               style={[
-                styles.typeButton,
-                !isIncome && [styles.typeButtonActive, { 
+                styles.typeOption,
+                !isIncome && [styles.typeOptionActive, { 
                   backgroundColor: colors.tint,
-                  shadowColor: colors.tint 
+                  borderColor: colors.tint 
                 }]
               ]}
               onPress={() => handleTypeChange(false)}
               disabled={isLoading}
             >
               <Ionicons 
-                name="arrow-down" 
+                name="arrow-up" 
                 size={20} 
                 color={!isIncome ? '#fff' : colors.icon} 
               />
               <Text style={[
-                styles.typeButtonText,
-                !isIncome && styles.typeButtonTextActive
+                styles.typeOptionText,
+                !isIncome && styles.typeOptionTextActive
               ]}>
                 Расход
               </Text>
@@ -219,23 +240,23 @@ export default function AddModal() {
             
             <Pressable
               style={[
-                styles.typeButton,
-                isIncome && [styles.typeButtonActive, { 
+                styles.typeOption,
+                isIncome && [styles.typeOptionActive, { 
                   backgroundColor: colors.tint,
-                  shadowColor: colors.tint 
+                  borderColor: colors.tint 
                 }]
               ]}
               onPress={() => handleTypeChange(true)}
               disabled={isLoading}
             >
               <Ionicons 
-                name="arrow-up" 
+                name="arrow-down" 
                 size={20} 
                 color={isIncome ? '#fff' : colors.icon} 
               />
               <Text style={[
-                styles.typeButtonText,
-                isIncome && styles.typeButtonTextActive
+                styles.typeOptionText,
+                isIncome && styles.typeOptionTextActive
               ]}>
                 Доход
               </Text>
@@ -243,11 +264,12 @@ export default function AddModal() {
           </View>
         </View>
 
-        {/* Поля формы */}
-        <View style={styles.formSection}>
-          <Text style={[styles.sectionLabel, { color: colors.text }]}>Детали</Text>
+        {/* Категория */}
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {isIncome ? 'Название дохода' : 'Категория'}
+          </Text>
           
-          {/* Поле категории/названия */}
           {!isIncome ? (
             // Категория для расходов - с выбором из списка
             <Pressable
@@ -258,7 +280,7 @@ export default function AddModal() {
               disabled={isLoading}
             >
               <View style={styles.inputRow}>
-                <Ionicons name="pricetag" size={20} color={colors.icon} />
+                <Ionicons name="pricetag" size={20} color={getCategoryColor()} />
                 <Text style={[styles.input, { color: category ? colors.text : colors.icon }]}>
                   {category || "Категория"}
                 </Text>
@@ -305,8 +327,11 @@ export default function AddModal() {
               </View>
             </View>
           )}
+        </View>
 
-          {/* Описание */}
+        {/* Описание */}
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Описание</Text>
           <View style={[styles.inputCard, { 
             backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)' 
           }]}>
@@ -325,7 +350,7 @@ export default function AddModal() {
               />
               {description ? (
                 <Pressable 
-                  onPress={() => setDescription('')}
+                  onPress={handleClearDescription}
                   style={styles.clearButton}
                   hitSlop={8}
                   disabled={isLoading}
@@ -335,8 +360,11 @@ export default function AddModal() {
               ) : null}
             </View>
           </View>
+        </View>
 
-          {/* Дата и время */}
+        {/* Дата и время */}
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Дата и время</Text>
           <Pressable
             style={[styles.inputCard, { 
               backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)' 
@@ -354,16 +382,25 @@ export default function AddModal() {
                   {formatTime(selectedDate)}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.icon} />
+              {selectedDate.getTime() !== new Date().getTime() ? (
+                <Pressable 
+                  onPress={handleClearDate}
+                  style={styles.clearButton}
+                  hitSlop={8}
+                  disabled={isLoading}
+                >
+                  <Ionicons name="close-circle" size={20} color={colors.icon} />
+                </Pressable>
+              ) : (
+                <Ionicons name="chevron-forward" size={20} color={colors.icon} />
+              )}
             </View>
           </Pressable>
         </View>
 
         {/* Быстрые суммы */}
-        <View style={styles.quickAmounts}>
-          <Text style={[styles.sectionLabel, { color: colors.text }]}>
-            Быстрые суммы
-          </Text>
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Быстрые суммы</Text>
           <View style={styles.quickAmountsGrid}>
             {[100, 500, 1000, 2000].map((quickAmount) => (
               <Pressable
@@ -385,12 +422,9 @@ export default function AddModal() {
             ))}
           </View>
         </View>
-
-        {/* Пустое пространство для скролла */}
-        <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      {/* Модалка выбора даты и времени */}
+      {/* Модалки */}
       <DateTimePickerModal
         visible={showDatePicker}
         onClose={() => setShowDatePicker(false)}
@@ -398,12 +432,12 @@ export default function AddModal() {
         onDateChange={setSelectedDate}
       />
 
-      {/* Модалка выбора категории */}
       <CategoryPickerModal
         visible={showCategoryPicker}
         onClose={() => setShowCategoryPicker(false)}
         onCategorySelect={handleCategorySelect}
         selectedCategory={category}
+        userCategories={userCategories}
       />
     </KeyboardAvoidingView>
   );
@@ -433,14 +467,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingVertical: 20,
+    padding: 16,
+    gap: 16,
+    paddingTop: 20,
   },
-  mainCard: {
-    marginHorizontal: 20,
-    marginBottom: 24,
+  amountCard: {
+    borderRadius: 16,
     padding: 24,
-    borderRadius: 20,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   amountLabel: {
     fontSize: 16,
@@ -448,7 +487,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
     fontWeight: '500',
   },
-  amountInputContainer: {
+  amountRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
   },
@@ -463,52 +502,54 @@ const styles = StyleSheet.create({
     fontWeight: '300',
     marginLeft: 8,
   },
-  typeSection: {
-    marginHorizontal: 20,
-    marginBottom: 24,
+  section: {
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  sectionLabel: {
+  sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   typeSelector: {
     flexDirection: 'row',
     backgroundColor: 'rgba(122, 122, 122, 0.1)',
-    borderRadius: 16,
-    padding: 6,
+    borderRadius: 12,
+    padding: 4,
   },
-  typeButton: {
+  typeOption: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 12,
+    borderRadius: 10,
     gap: 8,
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
-  typeButtonActive: {
-    shadowOffset: { width: 0, height: 4 },
+  typeOptionActive: {
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  typeButtonText: {
-    fontSize: 16,
+  typeOptionText: {
+    fontSize: 15,
     fontWeight: '600',
     color: '#666',
   },
-  typeButtonTextActive: {
+  typeOptionTextActive: {
     color: '#fff',
-  },
-  formSection: {
-    marginHorizontal: 20,
-    marginBottom: 24,
   },
   inputCard: {
     borderRadius: 16,
     padding: 16,
-    marginBottom: 12,
   },
   inputRow: {
     flexDirection: 'row',
@@ -536,9 +577,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
     opacity: 0.7,
   },
-  quickAmounts: {
-    marginHorizontal: 20,
-  },
   quickAmountsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -554,8 +592,5 @@ const styles = StyleSheet.create({
   quickAmountText: {
     fontSize: 15,
     fontWeight: '600',
-  },
-  bottomSpacer: {
-    height: 300,
   },
 });

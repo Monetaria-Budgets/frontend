@@ -1,6 +1,6 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { Redirect } from "expo-router";
-
+import 'react-native-gesture-handler';
 
 export default function Index() {
     const { user, loading } = useAuth();

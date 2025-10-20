@@ -35,7 +35,7 @@ class CurrencyService {
   async getRateByCode(currencyCode: string): Promise<CurrencyRate> {
     try {
       const response = await fetch(
-        `h${API_URL}/currency/rates/${currencyCode}`
+        `${API_URL}/currency/rates/${currencyCode}`
       );
       const result = await response.json();
       

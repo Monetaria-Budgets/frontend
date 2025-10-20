@@ -4,47 +4,87 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { Operation } from '@/services/operationService';
+import { Category } from '@/services/categoryService';
 import { OperationItem } from './OperationItem';
 
 interface DaySectionProps {
   date: string;
   operations: Operation[];
+  categories: Category[];
+  onOperationUpdated: () => void;
 }
 
-export const DaySection = ({ date, operations }: DaySectionProps) => {
+export const DaySection = ({ 
+  date, 
+  operations, 
+  categories,
+  onOperationUpdated 
+}: DaySectionProps) => {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   
+  // 🔥 ФИКС: Правильное определение "Сегодня", "Вчера" с учетом часового пояса
   const formatDate = (dateStr: string) => {
-    const operationDate = new Date(dateStr + 'T00:00:00');
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    
-    const isToday = operationDate.toDateString() === today.toDateString();
-    const isYesterday = operationDate.toDateString() === yesterday.toDateString();
-    
-    if (isToday) {
-      return 'Сегодня';
-    } else if (isYesterday) {
-      return 'Вчера';
-    } else {
-      const day = operationDate.getDate();
-      const month = operationDate.toLocaleDateString('ru-RU', { 
-        month: 'long'
-      });
-      const weekday = operationDate.toLocaleDateString('ru-RU', { 
-        weekday: 'long'
-      });
+    try {
+      // Создаем дату из строки (учитываем разные форматы)
+      let operationDate: Date;
       
-      const currentYear = new Date().getFullYear();
-      const operationYear = operationDate.getFullYear();
-      
-      if (operationYear === currentYear) {
-        return `${day} ${month}, ${weekday}`;
+      if (dateStr.includes('T')) {
+        // ISO format: 2024-10-21T10:30:00
+        operationDate = new Date(dateStr);
+      } else if (dateStr.includes(' ')) {
+        // SQL format: 2024-10-21 10:30:00
+        operationDate = new Date(dateStr.replace(' ', 'T'));
       } else {
-        return `${day} ${month} ${operationYear}, ${weekday}`;
+        // Only date: 2024-10-21
+        operationDate = new Date(dateStr + 'T00:00:00');
       }
+      
+      // Проверяем валидность даты
+      if (isNaN(operationDate.getTime())) {
+        console.warn('Invalid date:', dateStr);
+        return 'Неизвестная дата';
+      }
+      
+      // 🔥 ВАЖНО: Получаем текущую дату в локальном часовом поясе
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      // Приводим дату операции к локальной дате (без времени)
+      const operationLocalDate = new Date(
+        operationDate.getFullYear(), 
+        operationDate.getMonth(), 
+        operationDate.getDate()
+      );
+      
+      // Сравниваем даты
+      if (operationLocalDate.getTime() === today.getTime()) {
+        return 'Сегодня';
+      } else if (operationLocalDate.getTime() === yesterday.getTime()) {
+        return 'Вчера';
+      } else {
+        const day = operationDate.getDate();
+        const month = operationDate.toLocaleDateString('ru-RU', { 
+          month: 'long'
+        });
+        const weekday = operationDate.toLocaleDateString('ru-RU', { 
+          weekday: 'long'
+        });
+        
+        const currentYear = new Date().getFullYear();
+        const operationYear = operationDate.getFullYear();
+        
+        if (operationYear === currentYear) {
+          return `${day} ${month}, ${weekday}`;
+        } else {
+          return `${day} ${month} ${operationYear}, ${weekday}`;
+        }
+      }
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Неизвестная дата';
     }
   };
 
@@ -65,7 +105,8 @@ export const DaySection = ({ date, operations }: DaySectionProps) => {
             {formatDate(date)}
           </Text>
           <Text style={[styles.operationsCount, { color: colors.icon }]}>
-            {operations.length} операций
+            {operations.length} {operations.length === 1 ? 'операция' : 
+             operations.length > 1 && operations.length < 5 ? 'операции' : 'операций'}
           </Text>
         </View>
         <View style={[
@@ -89,8 +130,10 @@ export const DaySection = ({ date, operations }: DaySectionProps) => {
           <OperationItem 
             key={operation.id} 
             operation={operation}
+            categories={categories}
             isFirst={index === 0}
             isLast={index === operations.length - 1}
+            onOperationUpdated={onOperationUpdated}
           />
         ))}
       </View>
@@ -101,13 +144,12 @@ export const DaySection = ({ date, operations }: DaySectionProps) => {
 const styles = StyleSheet.create({
   daySection: {
     marginBottom: 20,
-    paddingHorizontal: 16, // Добавили паддинг для всего дня
   },
   dayHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    paddingHorizontal: 0, // Убрали паддинг, так как он теперь у контейнера
+    paddingHorizontal: 16,
     paddingVertical: 12,
     marginBottom: 8,
   },

@@ -1,21 +1,36 @@
 // app/(tabs)/history/components/OperationItem.tsx
-import React from 'react';
-import { View, Text, StyleSheet, ViewStyle } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, StyleSheet, ViewStyle, Pressable, Alert, Animated } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { Operation } from '@/services/operationService';
+import { Category } from '@/services/categoryService';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { operationService } from '@/services/operationService';
+import { EditOperationModal } from './EditOperationModal';
 
 interface OperationItemProps {
   operation: Operation;
+  categories: Category[];
   isFirst?: boolean;
   isLast?: boolean;
+  onOperationUpdated: () => void;
 }
 
-export const OperationItem = ({ operation, isFirst = false, isLast = false }: OperationItemProps) => {
+export const OperationItem = ({ 
+  operation, 
+  categories,
+  isFirst = false, 
+  isLast = false,
+  onOperationUpdated 
+}: OperationItemProps) => {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isIncome = operation.operation === 'income';
+
+  const [showEditModal, setShowEditModal] = useState(false);
+  const swipeableRef = useRef<Swipeable>(null);
 
   const formatTime = (dateString: string) => {
     try {
@@ -30,47 +45,15 @@ export const OperationItem = ({ operation, isFirst = false, isLast = false }: Op
     }
   };
 
-  const getCategoryIcon = (category: string) => {
-    const iconMap: { [key: string]: string } = {
-      'Продукты': 'cart',
-      'Транспорт': 'car',
-      'Еда': 'restaurant',
-      'Остальное': 'bag-handle',
-      'Зарплата': 'card',
-      'Развлечения': 'film',
-      'Здоровье': 'medkit',
-      'Одежда': 'shirt',
-      'Коммунальные': 'home',
-      'Образование': 'school',
-      'Подарки': 'gift',
-      'Инвестиции': 'trending-up',
-      'Жилье': 'business',
-      'Магазины': 'storefront',
-      'Техника': 'hardware-chip',
-      'Путешествия': 'airplane',
-      'Подписки': 'newspaper',
-    };
-    return iconMap[category] || 'cash';
+  const getCategoryColor = (): string => {
+    if (isIncome) {
+      return '#4CAF50';
+    }
+    const categoryData = categories.find(cat => cat.name === operation.category);
+    return categoryData?.color || '#666666';
   };
 
-  const getCategoryColor = (category: string) => {
-    const colorMap: { [key: string]: string } = {
-      'Продукты': '#4CAF50',
-      'Транспорт': '#2196F3',
-      'Еда': '#FF9800',
-      'Зарплата': '#4CAF50',
-      'Развлечения': '#9C27B0',
-      'Здоровье': '#F44336',
-      'Одежда': '#E91E63',
-      'Коммунальные': '#607D8B',
-      'Образование': '#009688',
-      'Подарки': '#FF5722',
-      'Инвестиции': '#4CAF50',
-    };
-    return colorMap[category] || (isIncome ? '#4CAF50' : '#F44336');
-  };
-
-  const categoryColor = getCategoryColor(operation.category);
+  const categoryColor = getCategoryColor();
 
   const getItemStyles = (): ViewStyle[] => {
     const style: ViewStyle[] = [
@@ -81,7 +64,7 @@ export const OperationItem = ({ operation, isFirst = false, isLast = false }: Op
       }
     ];
 
-    // Добавляем скругления в зависимости от позиции
+    // Скругления для айтема
     if (isFirst && isLast) {
       style.push({ borderRadius: 12 });
     } else if (isFirst) {
@@ -96,7 +79,7 @@ export const OperationItem = ({ operation, isFirst = false, isLast = false }: Op
       });
     }
 
-    // Добавляем бордер если это единственный элемент
+    // Бордеры
     if (isFirst && isLast) {
       style.push({ borderWidth: 1 });
     } else if (isFirst) {
@@ -125,9 +108,111 @@ export const OperationItem = ({ operation, isFirst = false, isLast = false }: Op
     return style;
   };
 
-  return (
+  const handleEdit = () => {
+    swipeableRef.current?.close();
+    setShowEditModal(true);
+  };
+
+  const handleDelete = async () => {
+    try {
+      await operationService.deleteOperation(operation.id);
+      onOperationUpdated();
+    } catch (error: any) {
+      console.error('Error deleting operation:', error);
+      Alert.alert('Ошибка', error.message || 'Ошибка при удалении операции');
+    }
+  };
+
+  const confirmDelete = () => {
+    swipeableRef.current?.close();
+    Alert.alert(
+      'Удалить операцию?',
+      `Вы уверены, что хотите удалить операцию "${operation.category}"?`,
+      [
+        { text: 'Отмена', style: 'cancel' },
+        { text: 'Удалить', style: 'destructive', onPress: handleDelete }
+      ]
+    );
+  };
+
+  // 🔥 ПРАВИЛЬНЫЕ ССЫЛКИ НА МОДАЛКИ + СПОКОЙНЫЙ ЖЕЛТЫЙ
+  const renderLeftActions = (progress: any, dragX: any) => {
+    const scale = progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0.8, 1],
+      extrapolate: 'clamp',
+    });
+
+    const opacity = progress.interpolate({
+      inputRange: [0, 0.5, 1],
+      outputRange: [0, 0.8, 1],
+      extrapolate: 'clamp',
+    });
+
+    return (
+      <View style={[
+        styles.leftAction,
+        { 
+          borderTopLeftRadius: isFirst ? 12 : 0,
+          borderBottomLeftRadius: isLast ? 12 : 0,
+          borderTopRightRadius: isFirst ? 12 : 0, 
+          borderBottomRightRadius: isLast ? 12 : 0,
+        }
+      ]}>
+        <Animated.View style={[
+          styles.actionContent,
+          { 
+            transform: [{ scale }],
+            opacity 
+          }
+        ]}>
+          <Ionicons name="pencil" size={24} color="#fff" />
+          <Text style={styles.actionText}>Изменить</Text>
+        </Animated.View>
+      </View>
+    );
+  };
+
+  const renderRightActions = (progress: any, dragX: any) => {
+    const scale = progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0.8, 1],
+      extrapolate: 'clamp',
+    });
+
+    const opacity = progress.interpolate({
+      inputRange: [0, 0.5, 1],
+      outputRange: [0, 0.8, 1],
+      extrapolate: 'clamp',
+    });
+
+    return (
+      <View style={[
+        styles.rightAction,
+        { 
+          // 🔥 ЗАКРУГЛЕНИЯ КАК У АЙТЕМА:
+          borderTopRightRadius: isFirst ? 12 : 0,
+          borderBottomRightRadius: isLast ? 12 : 0,
+          borderTopLeftRadius: isFirst ? 12 : 0, 
+          borderBottomLeftRadius: isLast ? 12 : 0,
+        }
+      ]}>
+        <Animated.View style={[
+          styles.actionContent,
+          { 
+            transform: [{ scale }],
+            opacity 
+          }
+        ]}>
+          <Ionicons name="trash" size={24} color="#fff" />
+          <Text style={styles.actionText}>Удалить</Text>
+        </Animated.View>
+      </View>
+    );
+  };
+
+  const OperationContent = () => (
     <View style={getItemStyles()}>
-      {/* Добавляем разделитель если не последний элемент */}
       {!isLast && (
         <View style={[
           styles.divider,
@@ -140,17 +225,21 @@ export const OperationItem = ({ operation, isFirst = false, isLast = false }: Op
           <View style={[
             styles.categoryIcon,
             { 
-              backgroundColor: categoryColor + '15',
+              backgroundColor: isIncome ? '#4CAF5010' : categoryColor + '10'
             }
           ]}>
             <Ionicons 
-              name={getCategoryIcon(operation.category) as any} 
+              name={isIncome ? "cash-outline" : "card-outline"} 
               size={20} 
-              color={categoryColor} 
+              color={isIncome ? '#4CAF50' : categoryColor} 
             />
           </View>
+          
           <View style={styles.operationInfo}>
-            <Text style={[styles.categoryText, { color: colors.text }]}>
+            <Text style={[
+              styles.categoryText, 
+              { color: colors.text }
+            ]}>
               {operation.category}
             </Text>
             {operation.description ? (
@@ -161,16 +250,29 @@ export const OperationItem = ({ operation, isFirst = false, isLast = false }: Op
               >
                 {operation.description}
               </Text>
-            ) : null}
+            ) : (
+              <Text style={[styles.descriptionText, { color: colors.icon }]}>
+                {isIncome ? 'Пополнение' : 'Расход'}
+              </Text>
+            )}
           </View>
         </View>
+        
         <View style={styles.operationRight}>
-          <Text style={[
-            styles.amountText,
-            { color: isIncome ? '#4CAF50' : '#F44336' }
-          ]}>
-            {isIncome ? '+' : '−'}{operation.amount.toLocaleString('ru-RU')} ₽
-          </Text>
+          {isIncome ? (
+            <View style={styles.incomeBadge}>
+              <Text style={styles.incomeBadgeText}>
+                +{operation.amount.toLocaleString('ru-RU')} ₽
+              </Text>
+            </View>
+          ) : (
+            <Text style={[
+              styles.amountText,
+              { color: colors.text }
+            ]}>
+              −{operation.amount.toLocaleString('ru-RU')} ₽
+            </Text>
+          )}
           <Text style={[styles.timeText, { color: colors.icon }]}>
             {formatTime(operation.created_at)}
           </Text>
@@ -178,19 +280,54 @@ export const OperationItem = ({ operation, isFirst = false, isLast = false }: Op
       </View>
     </View>
   );
+
+  return (
+    <>
+      <View style={styles.swipeableWrapper}>
+        <Swipeable
+          ref={swipeableRef}
+          renderLeftActions={renderLeftActions}
+          renderRightActions={renderRightActions}
+          // 🔥 ПРАВИЛЬНЫЕ ССЫЛКИ:
+          onSwipeableLeftOpen={handleEdit} // Свайп вправо → Изменить
+          onSwipeableRightOpen={confirmDelete} // Свайп влево → Удалить
+          leftThreshold={60}
+          rightThreshold={60}
+          friction={2}
+          containerStyle={styles.swipeableContainer}
+        >
+          <OperationContent />
+        </Swipeable>
+      </View>
+
+      <EditOperationModal
+        visible={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        operation={operation}
+        categories={categories}
+        onOperationUpdated={onOperationUpdated}
+      />
+    </>
+  );
 };
 
 const styles = StyleSheet.create({
+  swipeableWrapper: {
+    marginHorizontal: 16,
+    marginBottom: 0,
+  },
+  swipeableContainer: {
+    // Без ограничений
+  },
   operationItem: {
     position: 'relative',
-    // Убрали marginHorizontal - теперь айтемы на всю ширину контейнера
   },
   operationContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 16,
   },
   divider: {
     position: 'absolute',
@@ -222,19 +359,57 @@ const styles = StyleSheet.create({
   },
   descriptionText: {
     fontSize: 14,
-    opacity: 0.7,
+    opacity: 0.6,
   },
   operationRight: {
     alignItems: 'flex-end',
     gap: 4,
   },
+  incomeBadge: {
+    backgroundColor: '#4CAF5015',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#4CAF5030',
+  },
+  incomeBadgeText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4CAF50',
+  },
   amountText: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   timeText: {
     fontSize: 13,
     opacity: 0.6,
     fontWeight: '500',
+  },
+  // 🔥 КНОПКИ СО СПОКОЙНЫМ ЖЕЛТЫМ
+  leftAction: {
+    width: 80,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFB74D', // 🔥 СПОКОЙНЫЙ ЖЕЛТЫЙ
+  },
+  rightAction: {
+    width: 80,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#EF5350',
+  },
+  actionContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
   },
 });
