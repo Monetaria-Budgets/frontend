@@ -10,21 +10,16 @@ export interface CustomPeriod {
 }
 
 interface UseStatisticsReturn {
-  // Данные
   statistics: ExtendedStatisticsData | null;
   loading: boolean;
   refreshing: boolean;
   error: string | null;
   period: PeriodType;
   customPeriod: CustomPeriod | undefined;
-  
-  // Методы
-  loadStatistics: (targetPeriod?: PeriodType, targetCustomPeriod?: CustomPeriod) => Promise<void>;
+  loadStatistics: (targetPeriod?: PeriodType, targetCustomPeriod?: CustomPeriod, forceRefresh?: boolean) => Promise<void>;
   refreshStatistics: () => void;
   changePeriod: (newPeriod: PeriodType, newCustomPeriod?: CustomPeriod) => void;
   clearError: () => void;
-  
-  // Утилиты
   hasData: boolean;
   financialHealth: {
     rating: string;
@@ -44,28 +39,37 @@ export const useStatistics = (initialPeriod: PeriodType = 'month', initialCustom
   const [period, setPeriod] = useState<PeriodType>(initialPeriod);
   const [customPeriod, setCustomPeriod] = useState<CustomPeriod | undefined>(initialCustomPeriod);
   
-  // Используем ref для отслеживания текущего запроса
+  // Используем ref для отслеживания текущего запроса и времени последнего обновления
   const isMountedRef = useRef(true);
   const lastRequestRef = useRef<{ period: PeriodType; customPeriod?: CustomPeriod } | null>(null);
+  const lastUpdateTimeRef = useRef<number>(0);
+  const isInitialLoadRef = useRef(true);
 
-  const loadStatistics = useCallback(async (targetPeriod?: PeriodType, targetCustomPeriod?: CustomPeriod) => {
+  const loadStatistics = useCallback(async (targetPeriod?: PeriodType, targetCustomPeriod?: CustomPeriod, forceRefresh: boolean = false) => {
     try {
       const currentPeriod = targetPeriod || period;
       const currentCustomPeriod = targetCustomPeriod || customPeriod;
       
-      // Проверяем, не загружаем ли мы уже те же данные
+      // Проверяем, не загружаем ли мы уже те же данные (если не форсированное обновление)
       const requestKey = JSON.stringify({ period: currentPeriod, customPeriod: currentCustomPeriod });
-      if (lastRequestRef.current && JSON.stringify(lastRequestRef.current) === requestKey && statistics) {
-        console.log('🔄 Пропускаем запрос - данные уже загружены');
+      const now = Date.now();
+      const timeSinceLastUpdate = now - lastUpdateTimeRef.current;
+      
+      // Если данные не устарели (менее 10 секунд) и не форсированное обновление - пропускаем
+      if (!forceRefresh && lastRequestRef.current && 
+          JSON.stringify(lastRequestRef.current) === requestKey && 
+          statistics && timeSinceLastUpdate < 10000) {
+        console.log('🔄 Пропускаем запрос - данные актуальны');
         return;
       }
 
       lastRequestRef.current = { period: currentPeriod, customPeriod: currentCustomPeriod };
+      lastUpdateTimeRef.current = now;
       
       setLoading(true);
       setError(null);
       
-      console.log(`📊 Загрузка статистики для периода: ${currentPeriod}`, currentCustomPeriod);
+      console.log(`📊 Загрузка статистики для периода: ${currentPeriod}`, currentCustomPeriod, forceRefresh ? '(форсированно)' : '');
       
       let data: ExtendedStatisticsData;
       
@@ -83,7 +87,8 @@ export const useStatistics = (initialPeriod: PeriodType = 'month', initialCustom
         console.log('✅ Статистика успешно загружена', {
           financialHealth: data.financialHealthRating,
           stability: data.financialStability,
-          recommendations: data.recommendations?.length
+          recommendations: data.recommendations?.length,
+          limits: data.limitsStats?.totalLimits || 0
         });
       }
     } catch (err: any) {
@@ -97,16 +102,17 @@ export const useStatistics = (initialPeriod: PeriodType = 'month', initialCustom
       if (isMountedRef.current) {
         setLoading(false);
         setRefreshing(false);
+        isInitialLoadRef.current = false;
       }
     }
   }, [period, customPeriod, statistics]);
 
-  // Загружаем данные при монтировании и при изменении периода
+  // Загружаем данные при монтировании
   useEffect(() => {
     isMountedRef.current = true;
     
-    // Загружаем данные только если их еще нет
-    if (!statistics) {
+    // Загружаем данные только при первом монтировании
+    if (isInitialLoadRef.current) {
       loadStatistics();
     }
 
@@ -118,8 +124,8 @@ export const useStatistics = (initialPeriod: PeriodType = 'month', initialCustom
   const refreshStatistics = useCallback(() => {
     console.log('🔄 Принудительное обновление статистики');
     setRefreshing(true);
-    loadStatistics();
-  }, [loadStatistics]);
+    loadStatistics(period, customPeriod, true); // forceRefresh = true
+  }, [loadStatistics, period, customPeriod]);
 
   const changePeriod = useCallback((newPeriod: PeriodType, newCustomPeriod?: CustomPeriod) => {
     console.log(`🔄 Смена периода на: ${newPeriod}`, newCustomPeriod);
@@ -129,7 +135,7 @@ export const useStatistics = (initialPeriod: PeriodType = 'month', initialCustom
     }
     // Сбрасываем lastRequest чтобы загрузить новые данные
     lastRequestRef.current = null;
-    loadStatistics(newPeriod, newCustomPeriod);
+    loadStatistics(newPeriod, newCustomPeriod, true);
   }, [loadStatistics]);
 
   const clearError = useCallback(() => {
@@ -166,36 +172,5 @@ export const useStatistics = (initialPeriod: PeriodType = 'month', initialCustom
     hasData: statistics ? statisticsService.hasData(statistics) : false,
     financialHealth,
     recommendations
-  };
-};
-
-// Хук для пожизненной статистики
-export const useLifetimeStatistics = () => {
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadLifetimeStatistics = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const result = await statisticsService.getLifetimeStatistics();
-      setData(result);
-    } catch (err: any) {
-      setError(err.message || 'Ошибка загрузки статистики');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadLifetimeStatistics();
-  }, [loadLifetimeStatistics]);
-
-  return {
-    data,
-    loading,
-    error,
-    refresh: loadLifetimeStatistics
   };
 };

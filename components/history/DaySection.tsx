@@ -12,13 +12,15 @@ interface DaySectionProps {
   operations: Operation[];
   categories: Category[];
   onOperationUpdated: () => void;
+  showSwipeHint?: boolean;
 }
 
 export const DaySection = ({ 
   date, 
   operations, 
   categories,
-  onOperationUpdated 
+  onOperationUpdated,
+  showSwipeHint = false 
 }: DaySectionProps) => {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -134,6 +136,8 @@ export const DaySection = ({
             isFirst={index === 0}
             isLast={index === operations.length - 1}
             onOperationUpdated={onOperationUpdated}
+            // 🔥 ПЕРЕДАЕМ ХИНТ ТОЛЬКО ПЕРВОЙ ОПЕРАЦИИ ПЕРВОГО ДНЯ
+            showSwipeHint={showSwipeHint && index === 0}
           />
         ))}
       </View>

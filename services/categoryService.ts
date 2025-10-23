@@ -11,6 +11,7 @@ export interface Category {
   user_id: number;
   created_at: string;
   updated_at?: string;
+  current_month_spent?: number; // Добавляем это поле
 }
 
 export interface CreateCategoryData {
@@ -162,7 +163,7 @@ export const categoryService = {
   },
 
   /**
-   * Проверить лимит категорий
+   * Проверить лимит категорий (обновленная логика)
    */
   async checkCategoryLimit(): Promise<CategoryLimit> {
     try {
@@ -187,6 +188,12 @@ export const categoryService = {
       
     } catch (error: any) {
       console.error('❌ Ошибка при проверке лимита:', error);
+      
+      // Если endpoint не существует, возвращаем дефолтные значения
+      if (error.response?.status === 404) {
+        return { current: 0, limit: 6, isPremium: false };
+      }
+      
       throw new Error(error.response?.data?.error || 'Ошибка при проверке лимита категорий');
     }
   }

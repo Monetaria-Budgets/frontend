@@ -10,6 +10,7 @@ interface ProfileInfoCardProps {
   label: string;
   value: string;
   badge?: string;
+  badgeColor?: string; // Добавляем этот пропс
   iconColor?: string;
   isPremium?: boolean;
 }
@@ -19,6 +20,7 @@ const ProfileInfoCard: React.FC<ProfileInfoCardProps> = ({
   label, 
   value, 
   badge,
+  badgeColor,
   iconColor,
   isPremium = false
 }) => {
@@ -60,8 +62,8 @@ const ProfileInfoCard: React.FC<ProfileInfoCardProps> = ({
           <View style={[
             styles.premiumBadge, 
             { 
-              backgroundColor: colors.tint,
-              shadowColor: colors.tint,
+              backgroundColor: badgeColor || colors.tint, // Используем badgeColor или цвет по умолчанию
+              shadowColor: badgeColor || colors.tint,
               shadowOffset: { width: 0, height: 0 },
               shadowOpacity: 0.3,
               shadowRadius: 4,

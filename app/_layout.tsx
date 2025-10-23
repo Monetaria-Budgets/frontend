@@ -17,25 +17,25 @@ export default function RootLayoutNav() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <BottomSheetModalProvider>
-          <AuthProvider>
-            <PinCodeProvider>
-              <PinCodeGuard>
-                <CurrencyProvider>
-                  <Stack screenOptions={{ headerShown: false }}>
-                    <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                    <Stack.Screen 
-                      name="(modals)" 
-                      options={{ presentation: 'modal', headerShown: false }}
-                    />
-                  </Stack>
-                  <StatusBar style="auto" />
-                </CurrencyProvider>
-              </PinCodeGuard>
-            </PinCodeProvider>
-          </AuthProvider>
-        </BottomSheetModalProvider>
+          <BottomSheetModalProvider>
+            <AuthProvider>
+              <PinCodeProvider>
+                <PinCodeGuard>
+                  <CurrencyProvider>
+                    <Stack screenOptions={{ headerShown: false }}>
+                      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                      <Stack.Screen 
+                        name="(modals)" 
+                        options={{ presentation: 'modal', headerShown: false }}
+                      />
+                    </Stack>
+                    <StatusBar style="auto" />
+                  </CurrencyProvider>
+                </PinCodeGuard>
+              </PinCodeProvider>
+            </AuthProvider>
+          </BottomSheetModalProvider>
       </GestureHandlerRootView>
     </ThemeProvider>
   );

@@ -1,3 +1,4 @@
+// components/modals/DateTimePickerModal.tsx
 import { View, Text, Pressable, StyleSheet, Modal, Animated, PanResponder } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -10,13 +11,17 @@ interface DateTimePickerModalProps {
   onClose: () => void;
   selectedDate: Date;
   onDateChange: (date: Date) => void;
+  minimumDate?: Date;
+  maximumDate?: Date;
 }
 
 export default function DateTimePickerModal({ 
   visible, 
   onClose, 
   selectedDate, 
-  onDateChange 
+  onDateChange,
+  minimumDate,
+  maximumDate
 }: DateTimePickerModalProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -31,7 +36,7 @@ export default function DateTimePickerModal({
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        return gestureState.dy > 5; // Активируем только при движении вниз
+        return gestureState.dy > 5;
       },
       onPanResponderMove: (_, gestureState) => {
         if (gestureState.dy > 0) {
@@ -40,10 +45,8 @@ export default function DateTimePickerModal({
       },
       onPanResponderRelease: (_, gestureState) => {
         if (gestureState.dy > 100 || gestureState.vy > 0.5) {
-          // Если свайпнули достаточно далеко вниз - закрываем
           handleClose();
         } else {
-          // Иначе возвращаем на место
           Animated.spring(panY, {
             toValue: 0,
             useNativeDriver: true,
@@ -55,7 +58,7 @@ export default function DateTimePickerModal({
 
   useEffect(() => {
     if (visible) {
-      // Показываем модалку с анимацией
+      setTempDate(selectedDate);
       panY.setValue(0);
       Animated.parallel([
         Animated.timing(fadeAnim, {
@@ -65,7 +68,6 @@ export default function DateTimePickerModal({
         }),
       ]).start();
     } else {
-      // Сбрасываем анимации когда модалка закрыта
       fadeAnim.setValue(0);
     }
   }, [visible]);
@@ -76,13 +78,26 @@ export default function DateTimePickerModal({
     }
   };
 
+  // ФИКС: Устанавливаем текущее локальное время
+  const handleResetToCurrent = () => {
+    const now = new Date();
+    
+    // Проверяем ограничения
+    if (minimumDate && now < minimumDate) {
+      setTempDate(minimumDate);
+    } else if (maximumDate && now > maximumDate) {
+      setTempDate(maximumDate);
+    } else {
+      setTempDate(now);
+    }
+  };
+
   const handleSave = () => {
     onDateChange(tempDate);
     handleClose();
   };
 
   const handleClose = () => {
-    // Анимация закрытия
     Animated.timing(fadeAnim, {
       toValue: 0,
       duration: 300,
@@ -115,7 +130,6 @@ export default function DateTimePickerModal({
       onRequestClose={handleCancel}
     >
       <View style={styles.modalContainer}>
-        {/* Затемненный оверлей */}
         <Animated.View 
           style={[
             styles.modalOverlay,
@@ -128,7 +142,6 @@ export default function DateTimePickerModal({
           />
         </Animated.View>
         
-        {/* Контент модалки */}
         <Animated.View 
           style={[
             styles.modalContent, 
@@ -139,7 +152,6 @@ export default function DateTimePickerModal({
           ]}
           {...panResponder.panHandlers}
         >
-          {/* Draggable handle для свайпа */}
           <View style={styles.dragHandleContainer}>
             <View style={styles.dragHandle} />
           </View>
@@ -148,9 +160,18 @@ export default function DateTimePickerModal({
             <Text style={[styles.modalTitle, { color: colors.text }]}>
               {datePickerMode === 'date' ? 'Выберите дату' : 'Выберите время'}
             </Text>
-            <Pressable onPress={handleCancel} style={styles.modalCloseButton}>
-              <Ionicons name="close" size={22} color={colors.icon} />
-            </Pressable>
+            <View style={styles.headerActions}>
+              <Pressable 
+                onPress={handleResetToCurrent}
+                style={styles.resetButton}
+              >
+                <Ionicons name="refresh" size={18} color={colors.tint} />
+                <Text style={[styles.resetText, { color: colors.tint }]}>Сейчас</Text>
+              </Pressable>
+              <Pressable onPress={handleCancel} style={styles.modalCloseButton}>
+                <Ionicons name="close" size={22} color={colors.icon} />
+              </Pressable>
+            </View>
           </View>
 
           <View style={styles.pickerTypeSelector}>
@@ -191,6 +212,8 @@ export default function DateTimePickerModal({
             onChange={handleDateChange}
             locale="ru-RU"
             style={styles.dateTimePicker}
+            minimumDate={minimumDate}
+            maximumDate={maximumDate}
           />
           
           <View style={styles.modalActions}>
@@ -253,6 +276,24 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  resetButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,122,255,0.1)',
+  },
+  resetText: {
+    fontSize: 12,
+    fontWeight: '500',
   },
   modalTitle: {
     fontSize: 18,

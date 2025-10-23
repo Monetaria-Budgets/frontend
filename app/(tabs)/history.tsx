@@ -33,8 +33,10 @@ export default function HistoryScreen() {
   const [filters, setFilters] = useState({
     type: null as 'income' | 'expense' | null,
     period: 'all',
-    category: 'all'
+    category: 'all',
+    customDates: null as { startDate: Date; endDate: Date } | null
   });
+  const [showSwipeHint, setShowSwipeHint] = useState(false);
   const scrollY = new Animated.Value(0);
 
   const headerOpacity = scrollY.interpolate({
@@ -42,6 +44,20 @@ export default function HistoryScreen() {
     outputRange: [0, 0.8, 1],
     extrapolate: 'clamp',
   });
+
+  // 🔥 ПОКАЗ ХИНТА ПРИ КАЖДОМ ФОКУСЕ НА ЭКРАНЕ
+  useFocusEffect(
+    useCallback(() => {
+      // Показываем хинт через секунду после загрузки данных
+      if (operations.length > 0) {
+        const timer = setTimeout(() => {
+          setShowSwipeHint(true);
+        }, 1000);
+
+        return () => clearTimeout(timer);
+      }
+    }, [operations.length])
+  );
 
   // Функция для нормализации данных с бэка
   const normalizeOperations = (operations: any[]): Operation[] => {
@@ -143,9 +159,28 @@ export default function HistoryScreen() {
         case 'year':
           startDate.setFullYear(now.getFullYear() - 1);
           break;
+        case 'custom':
+          if (currentFilters.customDates) {
+            // Для кастомного периода используем переданные даты
+            startDate.setTime(currentFilters.customDates.startDate.getTime());
+            const endDate = new Date(currentFilters.customDates.endDate);
+            // Устанавливаем время конца дня для конечной даты
+            endDate.setHours(23, 59, 59, 999);
+            
+            filtered = filtered.filter(op => {
+              const opDate = new Date(op.created_at);
+              return opDate >= startDate && opDate <= endDate;
+            });
+            break;
+          }
+          // Если кастомные даты не заданы, не фильтруем
+          break;
       }
       
-      filtered = filtered.filter(op => new Date(op.created_at) >= startDate);
+      // Для стандартных периодов (не кастомных)
+      if (currentFilters.period !== 'custom') {
+        filtered = filtered.filter(op => new Date(op.created_at) >= startDate);
+      }
     }
     
     return filtered;
@@ -204,6 +239,22 @@ export default function HistoryScreen() {
   const sortedDates = Object.keys(groupedOperations).sort((a, b) => 
     new Date(b).getTime() - new Date(a).getTime()
   );
+
+  // 🔥 НАХОДИМ ПЕРВУЮ ОПЕРАЦИЮ ДЛЯ ПОКАЗА ХИНТА
+  const getFirstOperationForHint = () => {
+    if (sortedDates.length === 0) return null;
+    
+    const firstDate = sortedDates[0];
+    const firstDayOperations = groupedOperations[firstDate];
+    
+    if (firstDayOperations && firstDayOperations.length > 0) {
+      return firstDayOperations[0]; // Первая операция первого дня
+    }
+    
+    return null;
+  };
+
+  const firstOperationForHint = getFirstOperationForHint();
 
   return (
     <ThemedGradientView style={styles.container}>
@@ -286,13 +337,19 @@ export default function HistoryScreen() {
                 </Text>
               </View>
             ) : (
-              sortedDates.map((date) => (
+              sortedDates.map((date, dateIndex) => (
                 <DaySection 
                   key={date} 
                   date={date} 
                   operations={groupedOperations[date]} 
                   categories={categories}
                   onOperationUpdated={handleOperationUpdated}
+                  // 🔥 ПЕРЕДАЕМ ФЛАГ ХИНТА ТОЛЬКО ДЛЯ ПЕРВОЙ ОПЕРАЦИИ ПЕРВОГО ДНЯ
+                  showSwipeHint={
+                    showSwipeHint && 
+                    dateIndex === 0 && 
+                    firstOperationForHint !== null
+                  }
                 />
               ))
             )}

@@ -1,4 +1,4 @@
-// components/home/RecentOperations.tsx - ФИНАЛЬНАЯ ВЕРСИЯ
+// components/home/RecentOperations.tsx - ПЕРЕДЕЛАННЫЙ ПОД СТИЛЬ ИСТОРИИ
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -6,12 +6,14 @@ import { Colors } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Operation } from '@/services/operationService';
+import { Category } from '@/services/categoryService';
 
 interface RecentOperationsProps {
   operations: Operation[];
+  categories: Category[];
 }
 
-const RecentOperations: React.FC<RecentOperationsProps> = ({ operations }) => {
+const RecentOperations: React.FC<RecentOperationsProps> = ({ operations, categories }) => {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
@@ -57,67 +59,16 @@ const RecentOperations: React.FC<RecentOperationsProps> = ({ operations }) => {
     }
   };
 
-  // Иконки категорий
-  const getCategoryIcon = (category: string, type: string) => {
-    if (type === 'income') return 'trending-up';
+  // 🔥 ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ ЦВЕТА КАТЕГОРИИ ИЗ БЭКА
+  const getCategoryColor = (categoryName: string, type: string): string => {
+    if (type === 'income') return '#4CAF50';
     
-    const iconMap: { [key: string]: string } = {
-      'Продукты': 'cart',
-      'Транспорт': 'car',
-      'Еда вне дома': 'restaurant',
-      'Кафе и рестораны': 'cafe',
-      'Остальное': 'bag-handle',
-      'Зарплата': 'card',
-      'Развлечения': 'film',
-      'Здоровье': 'medkit',
-      'Одежда': 'shirt',
-      'Коммунальные': 'home',
-      'Образование': 'school',
-      'Подарки': 'gift',
-      'Инвестиции': 'trending-up',
-      'Жилье': 'business',
-      'Магазины': 'storefront',
-      'Техника': 'hardware-chip',
-      'Путешествия': 'airplane',
-      'Подписки': 'newspaper',
-      'Красота': 'sparkles',
-      'Спорт': 'barbell',
-      'Такси': 'car-sport',
-      'Супермаркет': 'basket',
-    };
-    return iconMap[category] || 'cash';
+    // Ищем категорию в списке из бэка
+    const category = categories.find(cat => cat.name === categoryName);
+    return category?.color || '#666666';
   };
 
-  const getCategoryColor = (category: string, type: string) => {
-    if (type === 'income') return '#34C759';
-    
-    const colorMap: { [key: string]: string } = {
-      'Продукты': '#4CAF50',
-      'Транспорт': '#2196F3',
-      'Еда вне дома': '#FF9800',
-      'Кафе и рестораны': '#FF5722',
-      'Зарплата': '#4CAF50',
-      'Развлечения': '#9C27B0',
-      'Здоровье': '#F44336',
-      'Одежда': '#E91E63',
-      'Коммунальные': '#607D8B',
-      'Образование': '#009688',
-      'Подарки': '#FF5722',
-      'Инвестиции': '#4CAF50',
-      'Жилье': '#795548',
-      'Магазины': '#FF9800',
-      'Техника': '#2196F3',
-      'Путешествия': '#3F51B5',
-      'Подписки': '#9C27B0',
-      'Красота': '#E91E63',
-      'Спорт': '#4CAF50',
-      'Такси': '#2196F3',
-      'Супермаркет': '#8BC34A',
-    };
-    return colorMap[category] || '#FF6B6B';
-  };
-
-  // Группируем операции по дате
+  // Группируем операции по дате (как в истории)
   const groupedOperations = operations.reduce((acc, operation) => {
     const dateKey = new Date(operation.created_at).toISOString().split('T')[0];
     if (!acc[dateKey]) {
@@ -131,31 +82,13 @@ const RecentOperations: React.FC<RecentOperationsProps> = ({ operations }) => {
     new Date(b).getTime() - new Date(a).getTime()
   );
 
-  // Берем операции из последних дней, пока не наберем 10
-  let operationsCount = 0;
-  const displayOperations: { date: string; operations: Operation[] }[] = [];
-
-  for (const date of sortedDates) {
-    if (operationsCount >= 10) break;
-    
-    const dateOperations = groupedOperations[date];
-    const operationsToTake = Math.min(dateOperations.length, 10 - operationsCount);
-    
-    displayOperations.push({
-      date,
-      operations: dateOperations.slice(0, operationsToTake)
-    });
-    
-    operationsCount += operationsToTake;
-  }
-
   if (operations.length === 0) {
     return null;
   }
 
   return (
     <View style={[styles.card, { backgroundColor: colors.card }]}>
-      {/* Простой хедер */}
+      {/* Хедер как в истории */}
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>
           Последние операции
@@ -174,103 +107,127 @@ const RecentOperations: React.FC<RecentOperationsProps> = ({ operations }) => {
         </Pressable>
       </View>
 
-      {/* Список операций с разбивкой по дням */}
+      {/* Список операций с разбивкой по дням КАК В ИСТОРИИ */}
       <View style={styles.operationsContainer}>
-        {displayOperations.map(({ date, operations: dateOperations }, dateIndex) => (
-          <View 
-            key={date} 
-            style={[
-              styles.dateSection,
-              dateIndex === displayOperations.length - 1 && styles.lastDateSection
-            ]}
-          >
-            {/* Заголовок дня */}
-            <Text style={[styles.dateText, { color: colors.text }]}>
-              {getRelativeDate(date)}
-            </Text>
-            
-            {/* Операции за день */}
-            <View style={[styles.operationsList, { borderRadius: 12, overflow: 'hidden' }]}>
-              {dateOperations.map((operation, index) => {
-                const categoryColor = getCategoryColor(operation.category, operation.operation);
-                const isFirst = index === 0;
-                const isLast = index === dateOperations.length - 1;
-                
-                return (
-                  <View 
-                    key={operation.id} 
-                    style={[
-                      styles.operationItem,
-                      { 
-                        backgroundColor: colors.card,
-                        borderColor: colors.border,
-                      },
-                      isFirst && styles.firstOperationItem,
-                      isLast && styles.lastOperationItem,
-                    ]}
-                  >
-                    {/* Цветная полоска сбоку - теперь внутри контента */}
+        {sortedDates.map((date, dateIndex) => {
+          const dateOperations = groupedOperations[date];
+          const dayTotal = dateOperations.reduce((total, op) => {
+            return op.operation === 'income' ? total + op.amount : total - op.amount;
+          }, 0);
+          const isPositiveDay = dayTotal >= 0;
+
+          return (
+            <View 
+              key={date} 
+              style={[
+                styles.daySection,
+                dateIndex === sortedDates.length - 1 && styles.lastDaySection
+              ]}
+            >
+              {/* Заголовок дня как в истории */}
+              <View style={styles.dayHeader}>
+                <View style={styles.dayHeaderLeft}>
+                  <Text style={[styles.dayDateText, { color: colors.text }]}>
+                    {getRelativeDate(date)}
+                  </Text>
+                  <Text style={[styles.operationsCount, { color: colors.icon }]}>
+                    {dateOperations.length} {dateOperations.length === 1 ? 'операция' : 
+                     dateOperations.length > 1 && dateOperations.length < 5 ? 'операции' : 'операций'}
+                  </Text>
+                </View>
+                <View style={[
+                  styles.dayTotalBadge,
+                  { 
+                    backgroundColor: isPositiveDay ? '#4CAF5015' : '#F4433615',
+                    borderColor: isPositiveDay ? '#4CAF5030' : '#F4433630'
+                  }
+                ]}>
+                  <Text style={[
+                    styles.dayTotalText,
+                    { color: isPositiveDay ? '#4CAF50' : '#F44336' }
+                  ]}>
+                    {isPositiveDay ? '+' : ''}{dayTotal.toLocaleString('ru-RU')} ₽
+                  </Text>
+                </View>
+              </View>
+              
+              {/* Операции за день как в истории */}
+              <View style={styles.operationsList}>
+                {dateOperations.map((operation, index) => {
+                  const categoryColor = getCategoryColor(operation.category, operation.operation);
+                  const isFirst = index === 0;
+                  const isLast = index === dateOperations.length - 1;
+                  
+                  return (
                     <View 
+                      key={operation.id} 
                       style={[
-                        styles.operationTypeIndicator,
+                        styles.operationItem,
                         { 
-                          backgroundColor: operation.operation === 'income' ? '#34C759' : '#FF3B30',
-                          borderTopLeftRadius: isFirst ? 12 : 0,
-                          borderBottomLeftRadius: isLast ? 12 : 0,
-                        }
-                      ]} 
-                    />
-                    
-                    <View style={styles.operationContent}>
-                      <View style={styles.operationLeft}>
-                        <View 
-                          style={[
-                            styles.categoryIcon, 
-                            { 
-                              backgroundColor: categoryColor + '15',
-                            }
-                          ]}
-                        >
-                          <Ionicons 
-                            name={getCategoryIcon(operation.category, operation.operation) as any} 
-                            size={20} 
-                            color={categoryColor} 
-                          />
-                        </View>
-                        <View style={styles.operationInfo}>
-                          <Text style={[styles.categoryText, { color: colors.text }]}>
-                            {operation.category}
-                          </Text>
-                          {operation.description ? (
-                            <Text style={[styles.descriptionText, { color: colors.icon }]}>
-                              {operation.description}
-                            </Text>
-                          ) : null}
-                        </View>
-                      </View>
+                          backgroundColor: colors.card,
+                          borderColor: colors.border,
+                        },
+                        isFirst && styles.firstOperationItem,
+                        isLast && styles.lastOperationItem,
+                      ]}
+                    >
+                      {/* Цветная полоска сбоку как в истории */}
+                      <View 
+                        style={[
+                          styles.operationTypeIndicator,
+                          { 
+                            backgroundColor: operation.operation === 'income' ? '#34C759' : '#FF3B30',
+                            borderTopLeftRadius: isFirst ? 12 : 0,
+                            borderBottomLeftRadius: isLast ? 12 : 0,
+                          }
+                        ]} 
+                      />
                       
-                      <View style={styles.operationRight}>
-                        <Text 
-                          style={[
-                            styles.amountText,
-                            { 
-                              color: operation.operation === 'income' ? '#34C759' : '#FF3B30'
-                            }
-                          ]}
-                        >
-                          {formatAmount(operation.amount, operation.operation)}
-                        </Text>
-                        <Text style={[styles.timeText, { color: colors.icon }]}>
-                          {formatTime(operation.created_at)}
-                        </Text>
+                      <View style={styles.operationContent}>
+                        <View style={styles.operationLeft}>
+                          {/* Цветной круг категории как в истории */}
+                          <View 
+                            style={[
+                              styles.categoryColorDot, 
+                              { backgroundColor: categoryColor }
+                            ]} 
+                          />
+                          
+                          <View style={styles.operationInfo}>
+                            <Text style={[styles.categoryText, { color: colors.text }]}>
+                              {operation.category}
+                            </Text>
+                            {operation.description ? (
+                              <Text style={[styles.descriptionText, { color: colors.icon }]}>
+                                {operation.description}
+                              </Text>
+                            ) : null}
+                          </View>
+                        </View>
+                        
+                        <View style={styles.operationRight}>
+                          <Text 
+                            style={[
+                              styles.amountText,
+                              { 
+                                color: operation.operation === 'income' ? '#34C759' : '#FF3B30'
+                              }
+                            ]}
+                          >
+                            {formatAmount(operation.amount, operation.operation)}
+                          </Text>
+                          <Text style={[styles.timeText, { color: colors.icon }]}>
+                            {formatTime(operation.created_at)}
+                          </Text>
+                        </View>
                       </View>
                     </View>
-                  </View>
-                );
-              })}
+                  );
+                })}
+              </View>
             </View>
-          </View>
-        ))}
+          );
+        })}
       </View>
     </View>
   );
@@ -309,18 +266,42 @@ const styles = StyleSheet.create({
   operationsContainer: {
     paddingHorizontal: 0,
   },
-  dateSection: {
-    marginBottom: 16,
+  daySection: {
+    marginBottom: 20,
   },
-  lastDateSection: {
+  lastDaySection: {
     marginBottom: 0,
   },
-  dateText: {
+  dayHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 8,
+  },
+  dayHeaderLeft: {
+    flex: 1,
+  },
+  dayDateText: {
     fontSize: 16,
     fontWeight: '700',
-    marginBottom: 12,
-    paddingHorizontal: 20,
-    opacity: 0.8,
+    marginBottom: 2,
+  },
+  operationsCount: {
+    fontSize: 13,
+    opacity: 0.7,
+  },
+  dayTotalBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginLeft: 12,
+    borderWidth: 1,
+  },
+  dayTotalText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
   operationsList: {
     marginHorizontal: 0,
@@ -352,7 +333,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 14,
     marginLeft: 3,
   },
@@ -362,12 +343,10 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 12,
   },
-  categoryIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+  categoryColorDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
   operationInfo: {
     flex: 1,
@@ -379,7 +358,7 @@ const styles = StyleSheet.create({
   },
   descriptionText: {
     fontSize: 14,
-    opacity: 0.7,
+    opacity: 0.6,
   },
   operationRight: {
     alignItems: 'flex-end',

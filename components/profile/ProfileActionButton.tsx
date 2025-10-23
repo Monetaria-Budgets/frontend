@@ -8,15 +8,17 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 interface ProfileActionButtonProps {
   icon: string;
   title: string;
+  subtitle?: string;
   onPress: () => void;
   showChevron?: boolean;
 }
 
-const ProfileActionButton: React.FC<ProfileActionButtonProps> = ({ 
-  icon, 
-  title, 
+const ProfileActionButton: React.FC<ProfileActionButtonProps> = ({
+  icon,
+  title,
+  subtitle,
   onPress,
-  showChevron = true 
+  showChevron = true
 }) => {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -24,21 +26,23 @@ const ProfileActionButton: React.FC<ProfileActionButtonProps> = ({
   return (
     <Pressable
       style={({ pressed }) => [
-        styles.actionButton,
-        { 
-          backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
-          transform: [{ scale: pressed ? 0.98 : 1 }]
-        }
+        styles.button,
+        { backgroundColor: colors.card },
+        pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }
       ]}
       onPress={onPress}
     >
-      <View style={styles.actionRow}>
-        <View style={styles.actionIcon}>
-          <Ionicons name={icon as any} size={22} color={colors.icon} />
+      <View style={styles.buttonContent}>
+        <View style={styles.buttonLeft}>
+          <Ionicons name={icon as any} size={22} color={colors.icon} style={styles.icon} />
+          <View style={styles.textContainer}>
+            <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+            {subtitle && (
+              <Text style={[styles.subtitle, { color: colors.icon }]}>{subtitle}</Text>
+            )}
+          </View>
         </View>
-        <Text style={[styles.actionText, { color: colors.text }]}>
-          {title}
-        </Text>
+        
         {showChevron && (
           <Ionicons name="chevron-forward" size={18} color={colors.icon} />
         )}
@@ -48,24 +52,40 @@ const ProfileActionButton: React.FC<ProfileActionButtonProps> = ({
 };
 
 const styles = StyleSheet.create({
-  actionButton: {
-    borderRadius: 16,
+  button: {
     padding: 16,
+    borderRadius: 12,
     marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  actionRow: {
+  buttonContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  actionIcon: {
-    width: 40,
+  buttonLeft: {
+    flexDirection: 'row',
     alignItems: 'center',
-  },
-  actionText: {
     flex: 1,
+  },
+  icon: {
+    marginRight: 12,
+  },
+  textContainer: {
+    flex: 1,
+  },
+  title: {
     fontSize: 16,
     fontWeight: '500',
-    marginLeft: 8,
+    marginBottom: 2,
+  },
+  subtitle: {
+    fontSize: 12,
+    opacity: 0.7,
   },
 });
 

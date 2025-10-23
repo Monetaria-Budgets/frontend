@@ -1,10 +1,8 @@
-// components/statistics/CategoriesBreakdown.tsx
+// components/statistics/CategoriesBreakdown.tsx - ОБНОВЛЕННАЯ ВЕРСИЯ
 import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
-import { useRouter } from 'expo-router';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { CategoryStat } from '@/services/statisticsService';
 
 interface CategoriesBreakdownProps {
@@ -18,7 +16,6 @@ const CategoriesBreakdown: React.FC<CategoriesBreakdownProps> = ({
 }) => {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const router = useRouter();
 
   const formatAmount = (amount: number) => {
     return amount.toLocaleString('ru-RU') + ' ₽';
@@ -58,7 +55,7 @@ const CategoriesBreakdown: React.FC<CategoriesBreakdownProps> = ({
                     <View 
                       style={[
                         styles.colorDot, 
-                        { backgroundColor: category.color }
+                        { backgroundColor: category.color } // 🔥 ЦВЕТ ИЗ БЭКА
                       ]} 
                     />
                     <Text style={[styles.categoryName, { color: colors.text }]}>
@@ -101,18 +98,6 @@ const CategoriesBreakdown: React.FC<CategoriesBreakdownProps> = ({
         <Text style={[styles.title, { color: colors.text }]}>
           По категориям
         </Text>
-        <Pressable 
-          onPress={() => router.push("/(tabs)/history")}
-          style={({ pressed }) => [
-            styles.moreButton,
-            { opacity: pressed ? 0.7 : 1 }
-          ]}
-        >
-          <Text style={[styles.moreText, { color: colors.tint }]}>
-            Все
-          </Text>
-          <Ionicons name="chevron-forward" size={16} color={colors.tint} />
-        </Pressable>
       </View>
 
       <View style={styles.content}>
@@ -140,17 +125,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: "700",
-  },
-  moreButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    gap: 4,
-  },
-  moreText: {
-    fontSize: 14,
-    fontWeight: "600",
   },
   content: {
     paddingHorizontal: 0,

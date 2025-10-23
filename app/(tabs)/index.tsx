@@ -1,4 +1,4 @@
-// app/(tabs)/index.tsx
+// app/(tabs)/index.tsx - ОБНОВЛЕННАЯ ВЕРСИЯ
 import React, { useState, useCallback } from 'react';
 import { 
   View, 
@@ -23,6 +23,8 @@ import RecentOperations from '@/components/home/RecentOperations';
 
 // Хук для операций
 import { useOperations } from '@/hooks/useOperations';
+// Хук для категорий (чтобы брать цвета)
+import { useCategories } from '@/hooks/useCategories';
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
@@ -31,6 +33,7 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   
   const { loading, stats, loadOperations } = useOperations();
+  const { categories } = useCategories(); // 🔥 ДОБАВЛЯЕМ ДЛЯ ЦВЕТОВ КАТЕГОРИЙ
   const scrollY = new Animated.Value(0);
 
   const headerOpacity = scrollY.interpolate({
@@ -51,6 +54,45 @@ export default function HomeScreen() {
   );
 
   const hasData = stats.allOperations.length > 0;
+
+  // 🔥 ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ ЦВЕТА КАТЕГОРИИ ИЗ БЭКА
+  const getCategoryColor = (categoryName: string): string => {
+    const category = categories.find(cat => cat.name === categoryName);
+    return category?.color || '#666666'; // fallback цвет
+  };
+
+  // 🔥 ФОРМИРУЕМ ДАННЫЕ ДЛЯ ДИАГРАММЫ С ЦВЕТАМИ ИЗ БЭКА
+  const getExpenseCategoriesData = () => {
+    const expenseOperations = stats.currentMonthOperations.filter(op => op.operation === 'expense');
+    
+    if (expenseOperations.length === 0) return [];
+
+    const categoryMap = expenseOperations.reduce((acc, op) => {
+      const existing = acc.find(cat => cat.name === op.category);
+      if (existing) {
+        existing.amount += op.amount;
+      } else {
+        acc.push({
+          name: op.category,
+          amount: op.amount,
+          percentage: 0,
+          color: getCategoryColor(op.category) // 🔥 ИСПОЛЬЗУЕМ ЦВЕТ ИЗ БЭКА
+        });
+      }
+      return acc;
+    }, [] as any[]);
+
+    const total = categoryMap.reduce((sum, cat) => sum + cat.amount, 0);
+    
+    return categoryMap
+      .map(cat => ({
+        ...cat,
+        percentage: Math.round((cat.amount / total) * 100)
+      }))
+      .sort((a, b) => b.amount - a.amount);
+  };
+
+  const expenseCategoriesData = getExpenseCategoriesData();
 
   return (
     <ThemedGradientView style={styles.container}>
@@ -120,46 +162,19 @@ export default function HomeScreen() {
         >
           <View style={styles.content}>
             {/* Круговая диаграмма категорий */}
-            {stats.currentMonthExpense > 0 && (
+            {expenseCategoriesData.length > 0 && (
               <CategoriesChart 
-                categories={stats.currentMonthOperations
-                  .filter(op => op.operation === 'expense')
-                  .reduce((acc, op) => {
-                    const existing = acc.find(cat => cat.name === op.category);
-                    if (existing) {
-                      existing.amount += op.amount;
-                    } else {
-                      acc.push({
-                        name: op.category,
-                        amount: op.amount,
-                        percentage: 0,
-                        color: '#FF6B6B'
-                      });
-                    }
-                    return acc;
-                  }, [] as any[])
-                  .map((cat, index, array) => {
-                    const total = array.reduce((sum, c) => sum + c.amount, 0);
-                    return {
-                      ...cat,
-                      percentage: Math.round((cat.amount / total) * 100),
-                      color: [
-                        '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', 
-                        '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'
-                      ][index % 10]
-                    };
-                  })
-                  .sort((a, b) => b.amount - a.amount)
-                } 
+                categories={expenseCategoriesData} // 🔥 ПЕРЕДАЕМ ДАННЫЕ С ЦВЕТАМИ ИЗ БЭКА
               />
             )}
             
-            {/* Последние 10 операций */}
+            {/* Последние 10 операций - ТЕПЕРЬ КАК В ИСТОРИИ */}
             <RecentOperations 
               operations={stats.allOperations
                 .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                 .slice(0, 10)
               } 
+              categories={categories} // 🔥 ПЕРЕДАЕМ КАТЕГОРИИ ДЛЯ ЦВЕТОВ
             />
           </View>
         </ScrollView>

@@ -19,6 +19,7 @@ import DateTimePickerModal from '@/components/modals/DateTimePickerModal';
 import CategoryPickerModal from '@/components/modals/CategoryPickerModal';
 import { operationService, UpdateOperationData } from '@/services/operationService';
 import { Category } from '@/services/categoryService';
+import { eventBus } from '@/utils/eventBus';
 
 interface EditOperationModalProps {
   visible: boolean;
@@ -137,6 +138,8 @@ export const EditOperationModal = ({
       console.log('📤 Sending update data:', operationData); // 🔥 ДЕБАГ
 
       await operationService.updateOperation(operation.id, operationData);
+
+      eventBus.emit('operationAdded');
 
       Alert.alert('Успех', 'Операция успешно обновлена', [
         {

@@ -1,4 +1,4 @@
-// components/home/CategoriesChart.tsx - ФИНАЛЬНАЯ ВЕРСИЯ
+// components/home/CategoriesChart.tsx - ОБНОВЛЕННАЯ ВЕРСИЯ
 import React from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -11,7 +11,7 @@ interface CategoryData {
   name: string;
   amount: number;
   percentage: number;
-  color: string;
+  color: string; // 🔥 Цвет теперь приходит из бэка
 }
 
 interface CategoriesChartProps {
@@ -27,7 +27,7 @@ const CategoriesChart: React.FC<CategoriesChartProps> = ({ categories }) => {
 
   const slices = categories.map(c => ({
     value: c.amount,
-    color: c.color,
+    color: c.color, // 🔥 ИСПОЛЬЗУЕМ ЦВЕТ ИЗ ПРОПСОВ (УЖЕ ИЗ БЭКА)
   }));
 
   const totalAmount = categories.reduce((sum, cat) => sum + cat.amount, 0);
@@ -105,7 +105,7 @@ const CategoriesChart: React.FC<CategoriesChartProps> = ({ categories }) => {
                     <View 
                       style={[
                         styles.colorDot, 
-                        { backgroundColor: cat.color }
+                        { backgroundColor: cat.color } // 🔥 ИСПОЛЬЗУЕМ ЦВЕТ ИЗ БЭКА
                       ]} 
                     />
                     <Text style={[styles.categoryName, { color: colors.text }]}>
@@ -142,7 +142,6 @@ const CategoriesChart: React.FC<CategoriesChartProps> = ({ categories }) => {
 const styles = StyleSheet.create({
   card: {
     borderRadius: 12,
-    marginTop: 16,
     marginHorizontal: 0,
     overflow: 'hidden',
   },

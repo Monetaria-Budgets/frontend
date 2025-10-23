@@ -5,6 +5,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { FilterModal } from './FilterModals';
+import { CustomDateRangeModal } from './CustomDateRangeModal';
 
 interface FilterSectionProps {
   onFilterChange: (filters: any) => void;
@@ -17,10 +18,10 @@ export const FilterSection = ({ onFilterChange, currentFilters, operations }: Fi
   const colors = Colors[colorScheme ?? 'light'];
   const [showPeriodModal, setShowPeriodModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showCustomDateModal, setShowCustomDateModal] = useState(false);
 
   // 🔥 ФИКС: Получаем уникальные категории ТОЛЬКО из операций расходов
   const getUniqueCategories = () => {
-    // Фильтруем только расходы
     const expenseOperations = operations.filter(op => op.operation === 'expense');
     const categories = expenseOperations.map(op => op.category);
     const uniqueCategories = Array.from(new Set(categories));
@@ -37,7 +38,8 @@ export const FilterSection = ({ onFilterChange, currentFilters, operations }: Fi
     { key: 'all', label: 'Все время' },
     { key: 'week', label: 'Неделя' },
     { key: 'month', label: 'Месяц' },
-    { key: 'year', label: 'Год' }
+    { key: 'year', label: 'Год' },
+    { key: 'custom', label: 'Произвольный период' }
   ];
 
   const handleTypeFilter = (type: 'income' | 'expense' | null) => {
@@ -46,16 +48,55 @@ export const FilterSection = ({ onFilterChange, currentFilters, operations }: Fi
   };
 
   const handlePeriodSelect = (periodKey: string) => {
-    const newFilters = { ...currentFilters, period: periodKey };
+    if (periodKey === 'custom') {
+      setShowPeriodModal(false);
+      setTimeout(() => setShowCustomDateModal(true), 300);
+      return;
+    }
+
+    const newFilters = { 
+      ...currentFilters, 
+      period: periodKey,
+      customDates: null // Сбрасываем кастомные даты при выборе стандартного периода
+    };
     onFilterChange(newFilters);
+    setShowPeriodModal(false);
+  };
+
+  const handleCustomDateRange = (startDate: Date, endDate: Date) => {
+    const newFilters = { 
+      ...currentFilters, 
+      period: 'custom',
+      customDates: {
+        startDate,
+        endDate
+      }
+    };
+    onFilterChange(newFilters);
+    setShowCustomDateModal(false);
   };
 
   const handleCategorySelect = (categoryKey: string) => {
     const newFilters = { ...currentFilters, category: categoryKey };
     onFilterChange(newFilters);
+    setShowCategoryModal(false);
   };
 
-  const getPeriodLabel = (periodKey: string) => {
+  const getPeriodLabel = (periodKey: string, customDates: any) => {
+    if (periodKey === 'custom' && customDates) {
+      const start = customDates.startDate.toLocaleDateString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+      const end = customDates.endDate.toLocaleDateString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+      return `${start} - ${end}`;
+    }
+    
     const period = periodItems.find(p => p.key === periodKey);
     return period ? period.label : 'Все время';
   };
@@ -80,56 +121,62 @@ export const FilterSection = ({ onFilterChange, currentFilters, operations }: Fi
         <Pressable
           style={[
             styles.typeFilterButton,
-            isTypeActive(null) ? [styles.filterButtonActive, { backgroundColor: colors.tint }] : styles.filterButtonInactive
+            isTypeActive(null) && [styles.filterButtonActive, { backgroundColor: colors.tint }]
           ]}
           onPress={() => handleTypeFilter(null)}
         >
-          <Text style={[
-            styles.filterButtonText,
-            isTypeActive(null) ? styles.filterButtonTextActive : { color: colors.text }
-          ]}>
-            Все
-          </Text>
+          <View style={styles.typeFilterContent}>
+            <Text style={[
+              styles.filterButtonText,
+              isTypeActive(null) ? styles.filterButtonTextActive : { color: colors.text }
+            ]}>
+              Все
+            </Text>
+          </View>
         </Pressable>
 
         <Pressable
           style={[
             styles.typeFilterButton,
-            isTypeActive('income') ? [styles.filterButtonActive, { backgroundColor: '#4CAF50' }] : styles.filterButtonInactive
+            isTypeActive('income') && [styles.filterButtonActive, { backgroundColor: '#4CAF50' }]
           ]}
           onPress={() => handleTypeFilter('income')}
         >
-          <Ionicons 
-            name="arrow-down" 
-            size={16} 
-            color={isTypeActive('income') ? '#fff' : '#4CAF50'} 
-          />
-          <Text style={[
-            styles.filterButtonText,
-            isTypeActive('income') ? styles.filterButtonTextActive : { color: '#4CAF50' }
-          ]}>
-            Доходы
-          </Text>
+          <View style={styles.typeFilterContent}>
+            <Ionicons 
+              name="arrow-down" 
+              size={16} 
+              color={isTypeActive('income') ? '#fff' : '#4CAF50'} 
+            />
+            <Text style={[
+              styles.filterButtonText,
+              isTypeActive('income') ? styles.filterButtonTextActive : { color: '#4CAF50' }
+            ]}>
+              Доходы
+            </Text>
+          </View>
         </Pressable>
 
         <Pressable
           style={[
             styles.typeFilterButton,
-            isTypeActive('expense') ? [styles.filterButtonActive, { backgroundColor: '#F44336' }] : styles.filterButtonInactive
+            isTypeActive('expense') && [styles.filterButtonActive, { backgroundColor: '#F44336' }]
           ]}
           onPress={() => handleTypeFilter('expense')}
         >
-          <Ionicons 
-            name="arrow-up" 
-            size={16} 
-            color={isTypeActive('expense') ? '#fff' : '#F44336'} 
-          />
-          <Text style={[
-            styles.filterButtonText,
-            isTypeActive('expense') ? styles.filterButtonTextActive : { color: '#F44336' }
-          ]}>
-            Расходы
-          </Text>
+          <View style={styles.typeFilterContent}>
+            <Ionicons 
+              name="arrow-up" 
+              size={16} 
+              color={isTypeActive('expense') ? '#fff' : '#F44336'} 
+            />
+            <Text style={[
+              styles.filterButtonText,
+              isTypeActive('expense') ? styles.filterButtonTextActive : { color: '#F44336' }
+            ]}>
+              Расходы
+            </Text>
+          </View>
         </Pressable>
       </View>
 
@@ -138,15 +185,20 @@ export const FilterSection = ({ onFilterChange, currentFilters, operations }: Fi
         <Pressable
           style={[
             styles.dropdownFilterButton,
-            isPeriodActive ? [styles.filterButtonActive, { backgroundColor: colors.tint }] : [styles.filterButtonInactive, { borderColor: colors.border }]
+            isPeriodActive && [styles.filterButtonActive, { backgroundColor: colors.tint }],
+            !isPeriodActive && { borderColor: colors.border }
           ]}
           onPress={() => setShowPeriodModal(true)}
         >
-          <Text style={[
-            styles.filterButtonText,
-            isPeriodActive ? styles.filterButtonTextActive : { color: colors.text }
-          ]}>
-            {getPeriodLabel(currentFilters.period)}
+          <Text 
+            style={[
+              styles.filterButtonText,
+              isPeriodActive ? styles.filterButtonTextActive : { color: colors.text }
+            ]}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {getPeriodLabel(currentFilters.period, currentFilters.customDates)}
           </Text>
           <Ionicons 
             name="chevron-down" 
@@ -158,7 +210,8 @@ export const FilterSection = ({ onFilterChange, currentFilters, operations }: Fi
         <Pressable
           style={[
             styles.dropdownFilterButton,
-            isCategoryActive ? [styles.filterButtonActive, { backgroundColor: colors.tint }] : [styles.filterButtonInactive, { borderColor: colors.border }]
+            isCategoryActive && [styles.filterButtonActive, { backgroundColor: colors.tint }],
+            !isCategoryActive && { borderColor: colors.border }
           ]}
           onPress={() => setShowCategoryModal(true)}
         >
@@ -195,6 +248,14 @@ export const FilterSection = ({ onFilterChange, currentFilters, operations }: Fi
         items={categoryItems}
         selectedKey={currentFilters.category}
       />
+
+      {/* Модалка выбора произвольного периода */}
+      <CustomDateRangeModal
+        visible={showCustomDateModal}
+        onClose={() => setShowCustomDateModal(false)}
+        onDateRangeSelect={handleCustomDateRange}
+        initialDates={currentFilters.customDates}
+      />
     </View>
   );
 };
@@ -203,24 +264,29 @@ const styles = StyleSheet.create({
   filterContainer: {
     paddingTop: 20,
     paddingHorizontal: 16,
+    paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.1)',
   },
   filterRow: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: 8,
+    marginBottom: 12,
   },
   typeFilterButton: {
     flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    backgroundColor: 'rgba(122, 122, 122, 0.1)',
+  },
+  typeFilterContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 12,
     gap: 6,
-    borderWidth: 1,
-    borderColor: 'transparent',
   },
   dropdownFilterButton: {
     flex: 1,
@@ -228,11 +294,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,
-  },
-  filterButtonInactive: {
     backgroundColor: 'transparent',
   },
   filterButtonActive: {

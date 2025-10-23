@@ -1,16 +1,19 @@
-import React, { useState, useCallback, useRef } from 'react';
+// app/(tabs)/statistics.tsx
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { 
   View, 
   StyleSheet, 
   ScrollView, 
   RefreshControl, 
   ActivityIndicator, 
-  Text 
+  Text,
+  Pressable
 } from 'react-native';
 import { ThemedGradientView } from '@/components/themed-gradient-view';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { useFocusEffect } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 
 // Компоненты статистики
 import StatisticsHeader from '@/components/statistics/StatisticsHeader';
@@ -19,15 +22,17 @@ import BalanceChart from '@/components/statistics/BalanceChart';
 import IncomeExpenseComparison from '@/components/statistics/IncomeExpenseComparison';
 import FinancialMetrics from '@/components/statistics/FinancialMetrics';
 import CategoriesBreakdown from '@/components/statistics/CategoriesBreakdown';
-import RecentTransactions from '@/components/statistics/RecentTransactions';
+import LimitsStatisticsComponent from '@/components/statistics/LimitsStatistics';
 import ErrorState from '@/components/statistics/ErrorState';
 
 // Хук для статистики
 import { useStatistics, PeriodType, CustomPeriod } from '@/hooks/useStatistics';
+import { eventBus } from '@/utils/eventBus';
 
 export default function StatisticsScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const router = useRouter();
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('month');
   
   const { 
@@ -42,6 +47,7 @@ export default function StatisticsScreen() {
   } = useStatistics(selectedPeriod);
 
   const isFirstLoadRef = useRef(true);
+  const lastFocusTimeRef = useRef<number>(0);
 
   const onRefresh = useCallback(() => {
     refreshStatistics();
@@ -60,17 +66,38 @@ export default function StatisticsScreen() {
     clearError();
   }, [clearError]);
 
+  // 🔥 ИСПРАВЛЕННЫЙ useFocusEffect - обновляет только при реальном фокусе
   useFocusEffect(
     useCallback(() => {
-      if (isFirstLoadRef.current) {
-        isFirstLoadRef.current = false;
-        return;
-      }
-      if (error) {
+      const now = Date.now();
+      const timeSinceLastFocus = now - lastFocusTimeRef.current;
+      
+      // Обновляем только если прошло больше 5 секунд с последнего фокуса
+      if (timeSinceLastFocus > 5000) {
+        console.log('🎯 Экран статистики в фокусе, обновляем данные...');
         refreshStatistics();
       }
-    }, [error, refreshStatistics])
+      
+      lastFocusTimeRef.current = now;
+    }, [refreshStatistics])
   );
+
+  // 🔥 Подписка на события добавления операций
+  useEffect(() => {
+    const handleOperationAdded = () => {
+      console.log('🔄 Обновляем статистику из-за новой операции');
+      // Небольшая задержка чтобы сервер успел обработать операцию
+      setTimeout(() => {
+        refreshStatistics();
+      }, 500);
+    };
+
+    eventBus.on('operationAdded', handleOperationAdded);
+
+    return () => {
+      eventBus.off('operationAdded', handleOperationAdded);
+    };
+  }, [refreshStatistics]);
 
   if (error && !statistics) {
     return (
@@ -97,6 +124,10 @@ export default function StatisticsScreen() {
     );
   }
 
+  // 🔥 ПРОВЕРКА НА НАЛИЧИЕ ДАННЫХ
+  const hasTransactions = statistics && statistics.allTransactions && statistics.allTransactions.length > 0;
+  const hasLimits = statistics?.limitsStats && statistics.limitsStats.totalLimits > 0;
+
   return (
     <ThemedGradientView style={styles.container}>
       <ScrollView 
@@ -121,28 +152,53 @@ export default function StatisticsScreen() {
             onPeriodChange={handlePeriodChange}
           />
 
-          <BalanceChart 
-            data={statistics?.dynamics || []}
-            period={selectedPeriod}
-            isLoading={loading}
-          />
+          {/* 🔥 ЕСЛИ НЕТ ДАННЫХ - ПОКАЗЫВАЕМ ПЛАШКУ */}
+          {!hasTransactions ? (
+            <View style={styles.emptyContainer}>
+              <View style={[styles.emptyIcon, { backgroundColor: colors.icon + '20' }]}>
+                <Text style={[styles.emptyIconText, { color: colors.icon }]}>📊</Text>
+              </View>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>
+                Нет операций
+              </Text>
+              <Text style={[styles.emptyText, { color: colors.icon }]}>
+                Добавьте операции, чтобы увидеть статистику
+              </Text>
+              <Pressable
+                style={[styles.addButton, { backgroundColor: colors.tint }]}
+                onPress={() => router.push('/(modals)/add-modal')}
+              >
+                <Text style={styles.addButtonText}>Добавить операцию</Text>
+              </Pressable>
+            </View>
+          ) : (
+            /* 🔥 ЕСЛИ ЕСТЬ ДАННЫЕ - ПОКАЗЫВАЕМ СТАТИСТИКУ */
+            <>
+              <BalanceChart 
+                data={statistics?.dynamics || []}
+                period={selectedPeriod}
+                isLoading={loading}
+              />
 
-          <IncomeExpenseComparison 
-            income={statistics?.summary.income || 0}
-            expense={statistics?.summary.expense || 0}
-            period={selectedPeriod}
-          />
+              <IncomeExpenseComparison 
+                income={statistics?.summary.income || 0}
+                expense={statistics?.summary.expense || 0}
+                period={selectedPeriod}
+              />
 
-          <FinancialMetrics statistics={statistics} />
+              <FinancialMetrics statistics={statistics} />
 
-          <CategoriesBreakdown 
-            categories={statistics?.categories || []}
-            period={selectedPeriod}
-          />
+              <CategoriesBreakdown 
+                categories={statistics?.categories || []}
+                period={selectedPeriod}
+              />
 
-          <RecentTransactions 
-            transactions={statistics?.recentTransactions || []}
-          />
+              {/* 🔥 ДОБАВЛЯЕМ СТАТИСТИКУ ПО ЛИМИТАМ */}
+              {hasLimits && (
+                <LimitsStatisticsComponent limitsStats={statistics!.limitsStats} />
+              )}
+            </>
+          )}
         </View>
       </ScrollView>
     </ThemedGradientView>
@@ -168,5 +224,46 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     fontWeight: '500',
+  },
+  // 🔥 СТИЛИ ДЛЯ ПУСТОГО СОСТОЯНИЯ
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  emptyIconText: {
+    fontSize: 40,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 22,
+    opacity: 0.6,
+  },
+  addButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 12,
+  },
+  addButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

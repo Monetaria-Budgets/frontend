@@ -89,6 +89,13 @@ export default function CategoriesScreen() {
     setEditingCategory(null);
   };
 
+  const formatAmount = (amount: number) => {
+    return new Intl.NumberFormat('ru-RU', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
   const canCreateCategory = limit.isPremium || limit.current < limit.limit;
 
   if (loading && !refreshing && categories.length === 0) {
@@ -158,7 +165,7 @@ export default function CategoriesScreen() {
         </View>
         
         <Text style={[styles.limitText, { color: colors.icon }]}>
-          {limit.current} из {limit.limit} категорий {limit.isPremium ? '∞' : ''}
+          {limit.current} из {limit.isPremium ? '∞' : limit.limit} категорий 
         </Text>
         
         {!canCreateCategory && (
@@ -193,9 +200,14 @@ export default function CategoriesScreen() {
                     { backgroundColor: category.color }
                   ]}
                 />
-                <Text style={[styles.categoryName, { color: colors.text }]}>
-                  {category.name}
-                </Text>
+                <View style={styles.categoryText}>
+                  <Text style={[styles.categoryName, { color: colors.text }]}>
+                    {category.name}
+                  </Text>
+                  <Text style={[styles.categorySpent, { color: colors.icon }]}>
+                    Потрачено в этом месяце: {formatAmount(category.current_month_spent || 0)} ₽
+                  </Text>
+                </View>
               </View>
               
               <View style={styles.categoryActions}>
@@ -357,10 +369,17 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  categoryText: {
+    flex: 1,
+  },
   categoryName: {
     fontSize: 16,
     fontWeight: '500',
-    flex: 1,
+    marginBottom: 4,
+  },
+  categorySpent: {
+    fontSize: 12,
+    opacity: 0.7,
   },
   categoryActions: {
     flexDirection: 'row',

@@ -1,25 +1,29 @@
 // hooks/useCategories.ts
 import { useState, useCallback, useEffect } from 'react';
 import { categoryService, Category, CreateCategoryData, UpdateCategoryData, CategoryLimit } from '@/services/categoryService';
+import { premiumService, PremiumStatus } from '@/services/premiumService';
 
 export const useCategories = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [limit, setLimit] = useState<CategoryLimit>({ current: 0, limit: 6, isPremium: false });
+  const [premiumStatus, setPremiumStatus] = useState<PremiumStatus>({ isPremium: false });
 
   const loadCategories = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const [categoriesData, limitData] = await Promise.all([
+      const [categoriesData, limitData, premiumData] = await Promise.all([
         categoryService.getCategories(),
-        categoryService.checkCategoryLimit()
+        categoryService.checkCategoryLimit(),
+        premiumService.checkPremiumStatus()
       ]);
       
       setCategories(categoriesData);
       setLimit(limitData);
+      setPremiumStatus(premiumData);
       
     } catch (err: any) {
       setError(err.message);
@@ -89,6 +93,7 @@ export const useCategories = () => {
     loading,
     error,
     limit,
+    premiumStatus,
     actions: {
       createCategory,
       updateCategory,

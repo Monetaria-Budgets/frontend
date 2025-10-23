@@ -1,5 +1,5 @@
 // app/(tabs)/history/components/OperationItem.tsx
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ViewStyle, Pressable, Alert, Animated } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -16,6 +16,7 @@ interface OperationItemProps {
   isFirst?: boolean;
   isLast?: boolean;
   onOperationUpdated: () => void;
+  showSwipeHint?: boolean;
 }
 
 export const OperationItem = ({ 
@@ -23,14 +24,65 @@ export const OperationItem = ({
   categories,
   isFirst = false, 
   isLast = false,
-  onOperationUpdated 
+  onOperationUpdated,
+  showSwipeHint = false
 }: OperationItemProps) => {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const isIncome = operation.operation === 'income';
 
   const [showEditModal, setShowEditModal] = useState(false);
+  const [isShowingHint, setIsShowingHint] = useState(false);
   const swipeableRef = useRef<Swipeable>(null);
+  const hintAnim = useRef(new Animated.Value(0)).current;
+  const hintOpacity = useRef(new Animated.Value(0)).current;
+
+  // 🔥 ПОКАЗ ХИНТА ПРИ КАЖДОМ ЗАХОДЕ В ИСТОРИЮ
+  useEffect(() => {
+    if (showSwipeHint && !isShowingHint) {
+      const timer = setTimeout(() => {
+        showSwipeHintAnimation();
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [showSwipeHint]);
+
+  const showSwipeHintAnimation = () => {
+    setIsShowingHint(true);
+    
+    // 🔥 УЛУЧШЕННАЯ АНИМАЦИЯ С ПЛАВНЫМ ПОЯВЛЕНИЕМ
+    Animated.parallel([
+      Animated.timing(hintAnim, {
+        toValue: 60, // УМЕНЬШИЛ СДВИГ ДЛЯ БОЛЕЕ АККУРАТНОГО ВИДА
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(hintOpacity, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      })
+    ]).start(() => {
+      // Держим открытым 1.5 секунды
+      setTimeout(() => {
+        Animated.parallel([
+          Animated.timing(hintAnim, {
+            toValue: 0,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(hintOpacity, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          })
+        ]).start(() => {
+          setIsShowingHint(false);
+        });
+      }, 1500);
+    });
+  };
 
   const formatTime = (dateString: string) => {
     try {
@@ -64,7 +116,6 @@ export const OperationItem = ({
       }
     ];
 
-    // Скругления для айтема
     if (isFirst && isLast) {
       style.push({ borderRadius: 12 });
     } else if (isFirst) {
@@ -79,7 +130,6 @@ export const OperationItem = ({
       });
     }
 
-    // Бордеры
     if (isFirst && isLast) {
       style.push({ borderWidth: 1 });
     } else if (isFirst) {
@@ -135,7 +185,6 @@ export const OperationItem = ({
     );
   };
 
-  // 🔥 ПРАВИЛЬНЫЕ ССЫЛКИ НА МОДАЛКИ + СПОКОЙНЫЙ ЖЕЛТЫЙ
   const renderLeftActions = (progress: any, dragX: any) => {
     const scale = progress.interpolate({
       inputRange: [0, 1],
@@ -155,8 +204,6 @@ export const OperationItem = ({
         { 
           borderTopLeftRadius: isFirst ? 12 : 0,
           borderBottomLeftRadius: isLast ? 12 : 0,
-          borderTopRightRadius: isFirst ? 12 : 0, 
-          borderBottomRightRadius: isLast ? 12 : 0,
         }
       ]}>
         <Animated.View style={[
@@ -190,11 +237,8 @@ export const OperationItem = ({
       <View style={[
         styles.rightAction,
         { 
-          // 🔥 ЗАКРУГЛЕНИЯ КАК У АЙТЕМА:
           borderTopRightRadius: isFirst ? 12 : 0,
           borderBottomRightRadius: isLast ? 12 : 0,
-          borderTopLeftRadius: isFirst ? 12 : 0, 
-          borderBottomLeftRadius: isLast ? 12 : 0,
         }
       ]}>
         <Animated.View style={[
@@ -212,7 +256,19 @@ export const OperationItem = ({
   };
 
   const OperationContent = () => (
-    <View style={getItemStyles()}>
+    <Animated.View 
+      style={[
+        getItemStyles(),
+        isShowingHint && { 
+          transform: [{ translateX: hintAnim }],
+          shadowColor: colors.tint,
+          shadowOffset: { width: 2, height: 0 },
+          shadowOpacity: 0.3,
+          shadowRadius: 8,
+          elevation: 6,
+        }
+      ]}
+    >
       {!isLast && (
         <View style={[
           styles.divider,
@@ -278,7 +334,68 @@ export const OperationItem = ({
           </Text>
         </View>
       </View>
-    </View>
+
+      {/* 🔥 СТИЛЬНЫЙ ХИНТ */}
+      {isShowingHint && (
+        <Animated.View 
+          style={[
+            styles.hintContainer,
+            { 
+              opacity: hintOpacity,
+              backgroundColor: colors.tint
+            }
+          ]}
+        >
+          <View style={styles.hintContent}>
+            <View style={styles.hintLeft}>
+              <View style={[
+                styles.hintIcon,
+                { backgroundColor: '#FFB74D' }
+              ]}>
+                <Ionicons name="arrow-back" size={16} color="#FFF" />
+              </View>
+              <Text style={[
+                styles.hintText,
+                { color: colorScheme === 'dark' ? '#FFD54F' : '#E65100' }
+              ]}>
+                Сдвиньте для редактирования
+              </Text>
+            </View>
+            
+            <View style={styles.hintRight}>
+              <Text style={[
+                styles.hintText,
+                { color: colorScheme === 'dark' ? '#EF9A9A' : '#D32F2F' }
+              ]}>
+                Удалить
+              </Text>
+              <View style={[
+                styles.hintIcon,
+                { backgroundColor: '#EF5350' }
+              ]}>
+                <Ionicons name="arrow-forward" size={16} color="#FFF" />
+              </View>
+            </View>
+          </View>
+          
+          {/* 🔥 ИНДИКАТОР ПРОГРЕССА */}
+          <Animated.View 
+            style={[
+              styles.hintProgress,
+              { 
+                backgroundColor: colors.tint,
+                transform: [{
+                  scaleX: hintAnim.interpolate({
+                    inputRange: [0, 60],
+                    outputRange: [0, 1],
+                  })
+                }]
+              }
+            ]} 
+          />
+        </Animated.View>
+      )}
+    </Animated.View>
   );
 
   return (
@@ -288,13 +405,13 @@ export const OperationItem = ({
           ref={swipeableRef}
           renderLeftActions={renderLeftActions}
           renderRightActions={renderRightActions}
-          // 🔥 ПРАВИЛЬНЫЕ ССЫЛКИ:
-          onSwipeableLeftOpen={handleEdit} // Свайп вправо → Изменить
-          onSwipeableRightOpen={confirmDelete} // Свайп влево → Удалить
-          leftThreshold={60}
-          rightThreshold={60}
+          onSwipeableLeftOpen={handleEdit}
+          onSwipeableRightOpen={confirmDelete}
+          leftThreshold={40}
+          rightThreshold={40}
           friction={2}
-          containerStyle={styles.swipeableContainer}
+          overshootLeft={false}
+          overshootRight={false}
         >
           <OperationContent />
         </Swipeable>
@@ -316,11 +433,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 0,
   },
-  swipeableContainer: {
-    // Без ограничений
-  },
   operationItem: {
     position: 'relative',
+    overflow: 'hidden',
   },
   operationContent: {
     flexDirection: 'row',
@@ -387,13 +502,12 @@ const styles = StyleSheet.create({
     opacity: 0.6,
     fontWeight: '500',
   },
-  // 🔥 КНОПКИ СО СПОКОЙНЫМ ЖЕЛТЫМ
   leftAction: {
     width: 80,
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFB74D', // 🔥 СПОКОЙНЫЙ ЖЕЛТЫЙ
+    backgroundColor: '#FFB74D',
   },
   rightAction: {
     width: 80,
@@ -411,5 +525,51 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     marginTop: 4,
+  },
+  // 🔥 СТИЛЬНЫЙ ХИНТ
+  hintContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    borderLeftWidth: 3,
+    borderLeftColor: '#FFB74D',
+  },
+  hintContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  hintLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  hintRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  hintIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hintText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  hintProgress: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 2,
+    transformOrigin: 'left',
   },
 });

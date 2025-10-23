@@ -32,27 +32,43 @@ export interface Transaction {
   type: 'income' | 'expense';
 }
 
-// Новые интерфейсы для расширенных метрик
 export interface AdvancedMetrics {
-  // Основные расширенные метрики
   essentialExpenses: number;
   discretionaryExpenses: number;
   essentialToIncome: number;
   discretionaryToIncome: number;
   netFlowToIncome: number;
   expenseToIncomeRatio: number;
-  
-  // Анализ стабильности
   incomeRegularity: number;
   expenseConsistency: number;
   financialStability: number;
-  
-  // Оценки
   financialHealthRating: 'excellent' | 'good' | 'fair' | 'poor' | 'critical';
   financialHealthScore: number;
-  
-  // Рекомендации
   recommendations: string[];
+}
+
+export interface LimitsStatistics {
+  totalLimits: number;
+  exceededLimits: number;
+  nearExceededLimits: number;
+  totalLimitAmount: number;
+  totalSpent: number;
+  totalExceededAmount: number;
+  limitsUtilization: number;
+  averageLimitUsage: number;
+  limits: Array<{
+    id: number;
+    categoryId: number;
+    categoryName: string;
+    categoryColor: string;
+    limitAmount: number;
+    currentSpent: number;
+    percentage: number;
+    isExceeded: boolean;
+    isNearExceeded: boolean;
+    exceededAmount: number;
+    remainingAmount: number;
+  }>;
 }
 
 export interface ExtendedStatisticsData extends AdvancedMetrics {
@@ -63,8 +79,6 @@ export interface ExtendedStatisticsData extends AdvancedMetrics {
   categories: CategoryStat[];
   recentTransactions: Transaction[];
   allTransactions: Transaction[];
-  
-  // Базовые метрики
   savingsRate: number;
   averageTransaction: number;
   largestTransaction: number;
@@ -73,6 +87,7 @@ export interface ExtendedStatisticsData extends AdvancedMetrics {
   uniqueCategories: number;
   uniqueIncomeCategories: number;
   uniqueExpenseCategories: number;
+  limitsStats: LimitsStatistics;
 }
 
 export interface LifetimeStatistics {
@@ -110,9 +125,6 @@ export interface BasicStatisticsData {
 }
 
 export const statisticsService = {
-  /**
-   * Получить расширенную статистику за период
-   */
   async getExtendedStatistics(period: 'week' | 'month' | 'quarter' | 'year' | 'custom'): Promise<ExtendedStatisticsData> {
     try {
       const token = await AsyncStorage.getItem('@token');
@@ -139,7 +151,8 @@ export const statisticsService = {
         income: response.data.summary?.income || 0,
         expense: response.data.summary?.expense || 0,
         financialHealth: response.data.financialHealthRating,
-        stability: response.data.financialStability
+        stability: response.data.financialStability,
+        limits: response.data.limitsStats?.totalLimits || 0
       });
       
       return this.normalizeExtendedStatistics(response.data);
@@ -157,9 +170,6 @@ export const statisticsService = {
     }
   },
 
-  /**
-   * Получить статистику за кастомный период
-   */
   async getCustomPeriodStatistics(startDate: string, endDate: string): Promise<ExtendedStatisticsData> {
     try {
       const token = await AsyncStorage.getItem('@token');
@@ -191,9 +201,6 @@ export const statisticsService = {
     }
   },
 
-  /**
-   * Получить базовую статистику за период (для совместимости)
-   */
   async getBasicStatistics(period: 'week' | 'month' | 'quarter' | 'year'): Promise<BasicStatisticsData> {
     try {
       const token = await AsyncStorage.getItem('@token');
@@ -221,9 +228,6 @@ export const statisticsService = {
     }
   },
 
-  /**
-   * Получить статистику за все время
-   */
   async getLifetimeStatistics(): Promise<LifetimeStatistics> {
     try {
       const token = await AsyncStorage.getItem('@token');
@@ -262,18 +266,40 @@ export const statisticsService = {
     }
   },
 
-  /**
-   * Основной метод для получения статистики (использует расширенную)
-   */
+  async getLimitsStatistics(period: 'week' | 'month' | 'quarter' | 'year' | 'custom', startDate?: string, endDate?: string): Promise<LimitsStatistics> {
+    try {
+      const token = await AsyncStorage.getItem('@token');
+      
+      if (!token) {
+        throw new Error('Токен не найден');
+      }
+
+      let url = `${API_URL}/statistics/limits?period=${period}`;
+      if (period === 'custom' && startDate && endDate) {
+        url += `&startDate=${startDate}&endDate=${endDate}`;
+      }
+
+      const response = await axios.get(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 10000,
+      });
+
+      return response.data;
+      
+    } catch (error: any) {
+      console.error('❌ Ошибка при загрузке статистики по лимитам:', error);
+      throw new Error(error.response?.data?.error || 'Ошибка при загрузке статистики по лимитам');
+    }
+  },
+
   async getStatistics(period: 'week' | 'month' | 'quarter' | 'year' | 'custom'): Promise<ExtendedStatisticsData> {
     return this.getExtendedStatistics(period);
   },
 
-  /**
-   * Нормализация данных статистики
-   */
   normalizeExtendedStatistics(data: any): ExtendedStatisticsData {
-    // Обеспечиваем наличие всех полей
     const normalizedData: ExtendedStatisticsData = {
       period: data.period || 'month',
       periodLabel: data.periodLabel,
@@ -318,8 +344,6 @@ export const statisticsService = {
             type: (tx.type === 'income' || tx.type === 'expense') ? tx.type : 'expense'
           }))
         : [],
-      
-      // Базовые метрики
       savingsRate: Math.max(0, Number(data.savingsRate) || 0),
       averageTransaction: Math.max(0, Number(data.averageTransaction) || 0),
       largestTransaction: Math.max(0, Number(data.largestTransaction) || 0),
@@ -328,8 +352,6 @@ export const statisticsService = {
       uniqueCategories: Math.max(0, Number(data.uniqueCategories) || 0),
       uniqueIncomeCategories: Math.max(0, Number(data.uniqueIncomeCategories) || 0),
       uniqueExpenseCategories: Math.max(0, Number(data.uniqueExpenseCategories) || 0),
-      
-      // Расширенные метрики
       essentialExpenses: Math.max(0, Number(data.essentialExpenses) || 0),
       discretionaryExpenses: Math.max(0, Number(data.discretionaryExpenses) || 0),
       essentialToIncome: Math.max(0, Number(data.essentialToIncome) || 0),
@@ -341,7 +363,8 @@ export const statisticsService = {
       financialStability: Math.max(0, Number(data.financialStability) || 0),
       financialHealthRating: data.financialHealthRating || 'fair',
       financialHealthScore: Math.max(1, Math.min(5, Number(data.financialHealthScore) || 3)),
-      recommendations: Array.isArray(data.recommendations) ? data.recommendations : []
+      recommendations: Array.isArray(data.recommendations) ? data.recommendations : [],
+      limitsStats: data.limitsStats || this.createEmptyLimitsStatistics()
     };
 
     console.log('📈 Нормализованные данные с расширенными метриками:', {
@@ -349,15 +372,14 @@ export const statisticsService = {
       expense: normalizedData.summary.expense,
       financialHealth: normalizedData.financialHealthRating,
       stability: normalizedData.financialStability,
-      recommendations: normalizedData.recommendations.length
+      recommendations: normalizedData.recommendations.length,
+      limits: normalizedData.limitsStats.totalLimits,
+      exceededLimits: normalizedData.limitsStats.exceededLimits
     });
 
     return normalizedData;
   },
 
-  /**
-   * Генератор цветов для категорий
-   */
   getCategoryColor(index: number): string {
     const colors = [
       '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', 
@@ -369,9 +391,6 @@ export const statisticsService = {
     return colors[index % colors.length];
   },
 
-  /**
-   * Получить статистику по категориям с фильтрацией
-   */
   getFilteredCategories(statistics: ExtendedStatisticsData, type?: 'income' | 'expense'): CategoryStat[] {
     if (!statistics?.categories) return [];
     
@@ -382,9 +401,6 @@ export const statisticsService = {
     return statistics.categories;
   },
 
-  /**
-   * Получить цвет для рейтинга здоровья
-   */
   getHealthRatingColor(rating: string): string {
     switch (rating) {
       case 'excellent': return '#34C759';
@@ -396,9 +412,6 @@ export const statisticsService = {
     }
   },
 
-  /**
-   * Получить иконку для рейтинга здоровья
-   */
   getHealthRatingIcon(rating: string): string {
     switch (rating) {
       case 'excellent': return 'trending-up';
@@ -410,9 +423,6 @@ export const statisticsService = {
     }
   },
 
-  /**
-   * Получить описание для рейтинга здоровья
-   */
   getHealthRatingDescription(rating: string): string {
     switch (rating) {
       case 'excellent': return 'Отличное финансовое здоровье';
@@ -424,13 +434,30 @@ export const statisticsService = {
     }
   },
 
-  /**
-   * Рассчитать дополнительные метрики на клиенте (резервный метод)
-   */
+  getLimitStatusColor(percentage: number, isExceeded: boolean): string {
+    if (isExceeded) return '#FF3B30';
+    if (percentage >= 80) return '#FF9500';
+    if (percentage >= 50) return '#FFCC00';
+    return '#34C759';
+  },
+
+  getLimitStatusIcon(percentage: number, isExceeded: boolean): string {
+    if (isExceeded) return 'warning';
+    if (percentage >= 80) return 'alert-circle';
+    if (percentage >= 50) return 'information-circle';
+    return 'checkmark-circle';
+  },
+
+  getLimitStatusText(percentage: number, isExceeded: boolean): string {
+    if (isExceeded) return 'Превышен';
+    if (percentage >= 80) return 'Почти превышен';
+    if (percentage >= 50) return 'Умеренное использование';
+    return 'В пределах лимита';
+  },
+
   calculateClientSideMetrics(statistics: ExtendedStatisticsData) {
     const { summary, categories, allTransactions } = statistics;
     
-    // Самые крупные категории
     const topIncomeCategory = categories
       .filter(cat => cat.type === 'income')
       .sort((a, b) => b.amount - a.amount)[0];
@@ -439,7 +466,6 @@ export const statisticsService = {
       .filter(cat => cat.type === 'expense')
       .sort((a, b) => b.amount - a.amount)[0];
 
-    // Соотношение доходов и расходов
     const incomeExpenseRatio = summary.income > 0 
       ? (summary.expense / summary.income) * 100 
       : 0;
@@ -453,9 +479,6 @@ export const statisticsService = {
     };
   },
 
-  /**
-   * Форматирование денежных значений
-   */
   formatCurrency(amount: number, compact: boolean = false): string {
     if (compact && amount >= 1000000) {
       return `${(amount / 1000000).toFixed(1)}M ₽`;
@@ -466,16 +489,10 @@ export const statisticsService = {
     return `${amount.toLocaleString('ru-RU')} ₽`;
   },
 
-  /**
-   * Форматирование процентов
-   */
   formatPercentage(value: number, decimals: number = 1): string {
     return `${value.toFixed(decimals)}%`;
   },
 
-  /**
-   * Получить текстовое описание периода
-   */
   getPeriodDescription(period: string, periodLabel?: string): string {
     if (period === 'custom' && periodLabel) {
       return periodLabel;
@@ -499,9 +516,6 @@ export const statisticsService = {
     }
   },
 
-  /**
-   * Проверка наличия данных
-   */
   hasData(statistics: ExtendedStatisticsData | null): boolean {
     if (!statistics) return false;
     
@@ -520,9 +534,20 @@ export const statisticsService = {
     return hasTransactions || hasFinancialData || hasCategories;
   },
 
-  /**
-   * Создать пустую структуру статистики
-   */
+  createEmptyLimitsStatistics(): LimitsStatistics {
+    return {
+      totalLimits: 0,
+      exceededLimits: 0,
+      nearExceededLimits: 0,
+      totalLimitAmount: 0,
+      totalSpent: 0,
+      totalExceededAmount: 0,
+      limitsUtilization: 0,
+      averageLimitUsage: 0,
+      limits: []
+    };
+  },
+
   createEmptyStatistics(period: string = 'month'): ExtendedStatisticsData {
     const emptyStats: ExtendedStatisticsData = {
       period,
@@ -554,30 +579,22 @@ export const statisticsService = {
       financialStability: 0,
       financialHealthRating: 'fair',
       financialHealthScore: 3,
-      recommendations: ['Начните добавлять транзакции для анализа']
+      recommendations: ['Начните добавлять транзакции для анализа'],
+      limitsStats: this.createEmptyLimitsStatistics()
     };
 
     console.log('📭 Создана пустая статистика для периода:', period);
     return emptyStats;
   },
 
-  /**
-   * Получить иконку для типа операции
-   */
   getOperationIcon(type: 'income' | 'expense'): string {
     return type === 'income' ? 'trending-up' : 'trending-down';
   },
 
-  /**
-   * Получить цвет для типа операции
-   */
   getOperationColor(type: 'income' | 'expense'): string {
     return type === 'income' ? '#34C759' : '#FF3B30';
   },
 
-  /**
-   * Сгруппировать транзакции по дате
-   */
   groupTransactionsByDate(transactions: Transaction[]) {
     const groups: { [key: string]: Transaction[] } = {};
     
