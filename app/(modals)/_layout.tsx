@@ -12,8 +12,15 @@ export default function ModalLayout() {
         name="add" 
         options={{ 
           title: 'Добавить операцию',
-          headerBackTitle: 'Назад', // ← для iOS
+          headerBackTitle: 'Назад', 
         }} 
+      />
+      <Stack.Screen 
+        name="notification-detail"
+        options={{
+          title: 'Уведомление',
+          headerBackTitle: 'Назад',
+        }}
       />
     </Stack>
   );
