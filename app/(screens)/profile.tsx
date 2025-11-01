@@ -1,4 +1,3 @@
-// app/(tabs)/profile.tsx
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, Pressable, Text, StyleSheet, Alert } from "react-native";
 import { useAuth } from "../../contexts/AuthContext";
@@ -12,11 +11,21 @@ import { usePinCodeWithAuth } from "@/hooks/usePinCodeWithAuth";
 // Импортируем компоненты
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import ProfileInfoCard from '@/components/profile/ProfileInfoCard';
-import ProfileActionButton from '@/components/profile/ProfileActionButton'; // ТЕПЕРЬ ИСПОЛЬЗУЕМ!
+import ProfileActionButton from '@/components/profile/ProfileActionButton';
 import ProfileSection from '@/components/profile/ProfileSection';
+import { PremiumCard } from '@/components/profile/PremiumCard';
+import { QuickActions } from '@/components/profile/QuickActions';
+import { LogoutButton } from '@/components/profile/LogoutButton';
 
 // Сервисы
 import { premiumService, PremiumStatus } from '@/services/premiumService';
+
+interface QuickAction {
+  icon: string;
+  title: string;
+  route: string;
+  iconColor?: string;
+}
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
@@ -25,7 +34,10 @@ export default function ProfileScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const { isPinCodeSet } = usePinCodeWithAuth();
   
-  const [premiumStatus, setPremiumStatus] = useState<PremiumStatus>({ isPremium: false });
+  const [premiumStatus, setPremiumStatus] = useState<PremiumStatus>({ 
+    hasActivePremium: false, 
+    hadPremiumBefore: false 
+  });
   const [loadingPremium, setLoadingPremium] = useState(true);
 
   useEffect(() => {
@@ -55,6 +67,7 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: async () => {
             await logout();
+            // @ts-ignore
             router.replace("/(auth)/login");
           }
         }
@@ -73,10 +86,10 @@ export default function ProfileScreen() {
 
   const getName = () => typeof user?.name === 'string' ? user.name : 'Пользователь';
   const getEmail = () => typeof user?.email === 'string' ? user.email : 'email@example.com';
-  const getRole = () => typeof user?.role === 'string' ? user.role : 'Пользователь';
   
-  // Используем реальный премиум статус из premiumuser таблицы
-  const isPremium = premiumStatus.isPremium;
+  // Используем правильный премиум статус
+  const isPremium = premiumStatus.hasActivePremium;
+  const hadPremiumBefore = premiumStatus.hadPremiumBefore;
 
   const handlePinCodeAction = () => {
     if (isPinCodeSet) {
@@ -86,34 +99,46 @@ export default function ProfileScreen() {
         [
           { 
             text: 'Изменить PIN', 
-            onPress: () => router.push('/pin-code?change=true') 
+            onPress: () => {
+              // @ts-ignore
+              router.push('/(auth)/pin-code?change=true');
+            }
           },
           { 
             text: 'Отключить PIN', 
-            onPress: () => router.push('/pin-code?disable=true')
+            onPress: () => {
+              // @ts-ignore
+              router.push('/(auth)/pin-code?disable=true');
+            }
           },
           { text: 'Отмена', style: 'cancel' }
         ]
       );
     } else {
-      router.push('/pin-code?setup=true');
+      // @ts-ignore
+      router.push('/(auth)/pin-code?setup=true');
     }
   };
 
   const handleUpgradeToPremium = () => {
+    // @ts-ignore
     router.push('/premium');
   };
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'Неизвестно';
-    
-    const date = new Date(dateString);
-    return date.toLocaleDateString('ru-RU', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
-  };
+  // Данные для быстрых действий
+  const quickActions: QuickAction[] = [
+    {
+      icon: "pricetags",
+      title: "Категории",
+      route: "/categories"
+    },
+    {
+      icon: "speedometer",
+      title: "Лимиты", 
+      route: "/limits",
+      iconColor: "#4ECDC4"
+    }
+  ];
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -142,46 +167,13 @@ export default function ProfileScreen() {
           isPremium={isPremium}
         />
 
-        {/* Быстрый доступ - ТОЛЬКО СУЩЕСТВУЮЩИЕ СТРАНИЦЫ */}
+        {/* Быстрый доступ */}
         <ProfileSection title="Быстрый доступ">
-          <View style={styles.quickActions}>
-            <Pressable 
-              style={({ pressed }) => [
-                styles.quickAction,
-                { backgroundColor: colors.card },
-                pressed && { transform: [{ scale: 0.95 }], opacity: 0.8 }
-              ]}
-              onPress={() => router.push('/categories')}
-            >
-              <View style={[styles.quickActionIcon, { backgroundColor: colors.tint + '20' }]}>
-                <Ionicons name="pricetags" size={24} color={colors.tint} />
-              </View>
-              <Text style={[styles.quickActionText, { color: colors.text }]}>
-                Категории
-              </Text>
-            </Pressable>
-
-            <Pressable 
-              style={({ pressed }) => [
-                styles.quickAction,
-                { backgroundColor: colors.card },
-                pressed && { transform: [{ scale: 0.95 }], opacity: 0.8 }
-              ]}
-              onPress={() => router.push('/limits')}
-            >
-              <View style={[styles.quickActionIcon, { backgroundColor: '#4ECDC4' + '20' }]}>
-                <Ionicons name="speedometer" size={24} color="#4ECDC4" />
-              </View>
-              <Text style={[styles.quickActionText, { color: colors.text }]}>
-                Лимиты
-              </Text>
-            </Pressable>
-          </View>
+          <QuickActions actions={quickActions} />
         </ProfileSection>
 
         {/* Информационные карточки */}
         <ProfileSection title="Информация аккаунта">
-          
           <ProfileInfoCard
             icon={isPremium ? "star" : "star-outline"}
             label="Premium статус"
@@ -199,22 +191,39 @@ export default function ProfileScreen() {
             badge={isPinCodeSet ? "ON" : "OFF"}
             badgeColor={isPinCodeSet ? "#4ECDC4" : colors.icon}
           />
+
+          <ProfileInfoCard
+            icon="time-outline"
+            label="История подписок"
+            value={
+              isPremium ? "Активная подписка" : 
+              hadPremiumBefore ? "Была подписка" : "Никогда не было"
+            }
+            badge={
+              isPremium ? "ACTIVE" : 
+              hadPremiumBefore ? "HAD" : "NEW"
+            }
+            badgeColor={
+              isPremium ? colors.tint : 
+              hadPremiumBefore ? "#FFA500" : colors.icon
+            }
+          />
         </ProfileSection>
 
-        {/* УПРАВЛЕНИЕ АККАУНТОМ - ТЕПЕРЬ ИСПОЛЬЗУЕМ ProfileActionButton */}
+        {/* Управление аккаунтом */}
         <ProfileSection title="Управление аккаунтом">
           <ProfileActionButton
             icon="notifications-outline"
             title="Уведомления"
             subtitle="Настройка оповещений"
-            onPress={() => router.push('/notifications')}
+            route="/notifications"
           />
           
           <ProfileActionButton
             icon="color-palette-outline"
             title="Внешний вид"
             subtitle="Тема и оформление"
-            onPress={() => router.push('/appearance')}
+            route="/appearance"
           />
           
           <ProfileActionButton
@@ -225,116 +234,43 @@ export default function ProfileScreen() {
           />
         </ProfileSection>
 
-        {/* ПОДДЕРЖКА - ТЕПЕРЬ ИСПОЛЬЗУЕМ ProfileActionButton */}
+        {/* Поддержка */}
         <ProfileSection title="Поддержка">
           <ProfileActionButton
             icon="help-circle-outline"
             title="Справка"
             subtitle="Частые вопросы"
-            onPress={() => router.push('/support')}
+            route="/support"
           />
           
           <ProfileActionButton
             icon="chatbubble-ellipses-outline"
             title="Обратная связь"
             subtitle="Напишите нам"
-            onPress={() => router.push('/feedback')}
+            route="/feedback"
           />
           
           <ProfileActionButton
             icon="information-circle-outline"
             title="О приложении"
             subtitle="Версия и лицензия"
-            onPress={() => router.push('/about')}
+            route="/about"
           />
         </ProfileSection>
 
         {/* Премиум секция */}
-        {!isPremium ? (
-          <ProfileSection title="Премиум возможности">
-            <View style={[styles.premiumCard, { backgroundColor: colors.tint + '15', borderColor: colors.tint + '30' }]}>
-              <View style={styles.premiumHeader}>
-                <View style={styles.premiumTitleContainer}>
-                  <Ionicons name="diamond" size={24} color={colors.tint} />
-                  <Text style={[styles.premiumTitle, { color: colors.tint }]}>
-                    Премиум подписка
-                  </Text>
-                </View>
-                <View style={[styles.premiumBadge, { backgroundColor: colors.tint }]}>
-                  <Text style={styles.premiumBadgeText}>PRO</Text>
-                </View>
-              </View>
-              
-              <Text style={[styles.premiumSubtitle, { color: colors.icon }]}>
-                Откройте все возможности приложения
-              </Text>
-              
-              <View style={styles.premiumBenefits}>
-                <View style={styles.benefitItem}>
-                  <Ionicons name="checkmark-circle" size={18} color={colors.tint} />
-                  <Text style={[styles.benefitText, { color: colors.text }]}>
-                    Неограниченное количество категорий
-                  </Text>
-                </View>
-                <View style={styles.benefitItem}>
-                  <Ionicons name="checkmark-circle" size={18} color={colors.tint} />
-                  <Text style={[styles.benefitText, { color: colors.text }]}>
-                    Лимиты на все категории
-                  </Text>
-                </View>
-              </View>
-              
-              <Pressable
-                style={({ pressed }) => [
-                  styles.premiumButton,
-                  { backgroundColor: colors.tint },
-                  pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] }
-                ]}
-                onPress={handleUpgradeToPremium}
-              >
-                <Text style={styles.premiumButtonText}>Перейти на Premium</Text>
-                <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
-              </Pressable>
-            </View>
-          </ProfileSection>
-        ) : (
-          <ProfileSection title="Премиум статус">
-            <View style={[styles.premiumActiveCard, { backgroundColor: colors.tint + '15', borderColor: colors.tint + '30' }]}>
-              <View style={styles.premiumActiveHeader}>
-                <Ionicons name="diamond" size={32} color={colors.tint} />
-                <View>
-                  <Text style={[styles.premiumActiveTitle, { color: colors.tint }]}>
-                    Премиум активен
-                  </Text>
-                  {premiumStatus.subscriptionEnd && (
-                    <Text style={[styles.premiumActiveSubtitle, { color: colors.icon }]}>
-                      До: {formatDate(premiumStatus.subscriptionEnd)}
-                    </Text>
-                  )}
-                </View>
-              </View>
-              <Text style={[styles.premiumActiveText, { color: colors.text }]}>
-                Вы используете все возможности приложения
-              </Text>
-            </View>
-          </ProfileSection>
-        )}
+        <ProfileSection title={isPremium ? "Премиум статус" : "Премиум возможности"}>
+          <PremiumCard
+            isPremium={isPremium}
+            hadPremiumBefore={hadPremiumBefore}
+            subscriptionEnd={premiumStatus.subscriptionEnd}
+            daysRemaining={premiumStatus.daysRemaining}
+            onUpgrade={handleUpgradeToPremium}
+          />
+        </ProfileSection>
 
         {/* Кнопка выхода */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.logoutButton,
-            { 
-              backgroundColor: colorScheme === 'dark' ? 'rgba(255,59,48,0.2)' : 'rgba(255,59,48,0.1)',
-              borderColor: colorScheme === 'dark' ? 'rgba(255,59,48,0.3)' : 'rgba(255,59,48,0.2)',
-              transform: [{ scale: pressed ? 0.95 : 1 }]
-            }
-          ]}
-          onPress={handleLogout}
-        >
-          <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
-          <Text style={styles.logoutText}>Выйти из аккаунта</Text>
-        </Pressable>
+        <LogoutButton onPress={handleLogout} />
 
         {/* Версия приложения */}
         <Text style={[styles.versionText, { color: colors.icon }]}>
@@ -345,7 +281,6 @@ export default function ProfileScreen() {
   );
 }
 
-// Стили остаются без изменений
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -356,136 +291,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingVertical: 16,
     paddingBottom: 32,
-  },
-  quickActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 8,
-  },
-  quickAction: {
-    flex: 1,
-    minWidth: '45%',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  quickActionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quickActionText: {
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  premiumCard: {
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    gap: 16,
-  },
-  premiumHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  premiumTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  premiumTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  premiumBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  premiumBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  premiumSubtitle: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  premiumBenefits: {
-    gap: 8,
-  },
-  benefitItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-  },
-  benefitText: {
-    fontSize: 14,
-    lineHeight: 18,
-    flex: 1,
-  },
-  premiumButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  premiumButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  premiumActiveCard: {
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    gap: 12,
-  },
-  premiumActiveHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  premiumActiveTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  premiumActiveSubtitle: {
-    fontSize: 14,
-    marginTop: 2,
-  },
-  premiumActiveText: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 20,
-    padding: 16,
-    borderRadius: 16,
-    gap: 8,
-    marginBottom: 20,
-    borderWidth: 1,
-  },
-  logoutText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FF3B30',
   },
   versionText: {
     textAlign: 'center',

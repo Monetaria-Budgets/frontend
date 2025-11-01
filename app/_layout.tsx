@@ -10,6 +10,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { PinCodeProvider } from '@/contexts/PinCodeContext';
 import PinCodeGuard from '@/components/PinCodeGuard';
 import { CurrencyProvider } from '@/contexts/CurrencyContext';
+import { CategoriesProvider } from '@/contexts/CategoriesContext';
 
 export default function RootLayoutNav() {
   const colorScheme = useColorScheme();
@@ -21,17 +22,19 @@ export default function RootLayoutNav() {
             <AuthProvider>
               <PinCodeProvider>
                 <PinCodeGuard>
-                  <CurrencyProvider>
-                    <Stack screenOptions={{ headerShown: false }}>
-                      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                      <Stack.Screen 
-                        name="(modals)" 
-                        options={{ presentation: 'modal', headerShown: false }}
-                      />
-                    </Stack>
-                    <StatusBar style="auto" />
-                  </CurrencyProvider>
+                  <CategoriesProvider>
+                    <CurrencyProvider>
+                      <Stack screenOptions={{ headerShown: false }}>
+                        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                        <Stack.Screen 
+                          name="(modals)" 
+                          options={{ presentation: 'modal', headerShown: false }}
+                        />
+                      </Stack>
+                      <StatusBar style="auto" />
+                    </CurrencyProvider>
+                  </CategoriesProvider>
                 </PinCodeGuard>
               </PinCodeProvider>
             </AuthProvider>

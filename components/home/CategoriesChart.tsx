@@ -1,4 +1,4 @@
-// components/home/CategoriesChart.tsx - ОБНОВЛЕННАЯ ВЕРСИЯ
+// components/home/CategoriesChart.tsx - ПОЛНАЯ ВЕРСИЯ
 import React from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -11,23 +11,59 @@ interface CategoryData {
   name: string;
   amount: number;
   percentage: number;
-  color: string; // 🔥 Цвет теперь приходит из бэка
+  color: string;
 }
 
 interface CategoriesChartProps {
   categories: CategoryData[];
+  hasExpenses?: boolean;
 }
 
-const CategoriesChart: React.FC<CategoriesChartProps> = ({ categories }) => {
+const CategoriesChart: React.FC<CategoriesChartProps> = ({ categories, hasExpenses = true }) => {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
   const router = useRouter();
 
-  if (categories.length === 0) return null;
+  // Если нет расходов - показываем сообщение
+  if (!hasExpenses || categories.length === 0) {
+    return (
+      <View style={[styles.card, { backgroundColor: colors.card }]}>
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: colors.text }]}>
+            Расходы по категориям
+          </Text>
+          <Pressable 
+            onPress={() => router.push("/(tabs)/statistics")}
+            style={({ pressed }) => [
+              styles.moreButton,
+              { opacity: pressed ? 0.7 : 1 }
+            ]}
+          >
+            <Text style={[styles.moreText, { color: colors.tint }]}>
+              Все
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.tint} />
+          </Pressable>
+        </View>
+
+        <View style={styles.emptyState}>
+          <View style={[styles.emptyIcon, { backgroundColor: colors.icon + '20' }]}>
+            <Ionicons name="pie-chart-outline" size={32} color={colors.icon} />
+          </View>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>
+            Расходов в этом месяце пока нет
+          </Text>
+          <Text style={[styles.emptyText, { color: colors.icon }]}>
+            Когда вы добавите расходы, здесь появится статистика
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   const slices = categories.map(c => ({
     value: c.amount,
-    color: c.color, // 🔥 ИСПОЛЬЗУЕМ ЦВЕТ ИЗ ПРОПСОВ (УЖЕ ИЗ БЭКА)
+    color: c.color,
   }));
 
   const totalAmount = categories.reduce((sum, cat) => sum + cat.amount, 0);
@@ -105,7 +141,7 @@ const CategoriesChart: React.FC<CategoriesChartProps> = ({ categories }) => {
                     <View 
                       style={[
                         styles.colorDot, 
-                        { backgroundColor: cat.color } // 🔥 ИСПОЛЬЗУЕМ ЦВЕТ ИЗ БЭКА
+                        { backgroundColor: cat.color }
                       ]} 
                     />
                     <Text style={[styles.categoryName, { color: colors.text }]}>
@@ -270,6 +306,31 @@ const styles = StyleSheet.create({
   percentageText: {
     fontSize: 12,
     fontWeight: "600",
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  emptyIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    textAlign: 'center',
+    opacity: 0.6,
+    lineHeight: 18,
   },
 });
 

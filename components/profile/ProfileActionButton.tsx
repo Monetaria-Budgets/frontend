@@ -1,6 +1,6 @@
-// components/profile/ProfileActionButton.tsx
 import React from 'react';
 import { Pressable, Text, StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -9,7 +9,8 @@ interface ProfileActionButtonProps {
   icon: string;
   title: string;
   subtitle?: string;
-  onPress: () => void;
+  route?: string;
+  onPress?: () => void;
   showChevron?: boolean;
 }
 
@@ -17,11 +18,22 @@ const ProfileActionButton: React.FC<ProfileActionButtonProps> = ({
   icon,
   title,
   subtitle,
+  route,
   onPress,
   showChevron = true
 }) => {
+  const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+
+  const handlePress = () => {
+    if (onPress) {
+      onPress();
+    } else if (route) {
+      // @ts-ignore - игнорируем проверку типов для роутов
+      router.push(route);
+    }
+  };
 
   return (
     <Pressable
@@ -30,7 +42,7 @@ const ProfileActionButton: React.FC<ProfileActionButtonProps> = ({
         { backgroundColor: colors.card },
         pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }
       ]}
-      onPress={onPress}
+      onPress={handlePress}
     >
       <View style={styles.buttonContent}>
         <View style={styles.buttonLeft}>

@@ -10,6 +10,7 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Platform,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -18,7 +19,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors } from "@/constants/theme";
 
 export default function RegisterScreen() {
-  const { register } = useAuth();
+  const { register, registerLoading } = useAuth();
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
@@ -28,12 +29,27 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState("");
 
   const handleRegister = async () => {
+    if (!login.trim() || !email.trim() || !password.trim()) {
+      Alert.alert("Ошибка", "Пожалуйста, заполните все поля");
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert("Ошибка", "Пароль должен содержать минимум 6 символов");
+      return;
+    }
+
+    if (!email.includes('@')) {
+      Alert.alert("Ошибка", "Пожалуйста, введите корректный email");
+      return;
+    }
+
     try {
       await register(login, email, password);
-      alert("Регистрация прошла успешно!");
+      Alert.alert("Успешно", "Регистрация прошла успешно! Теперь вы можете войти в систему.");
       router.replace("/(auth)/login");
     } catch (err: any) {
-      alert(err.message);
+      Alert.alert("Ошибка регистрации", err.message);
     }
   };
 
@@ -59,6 +75,9 @@ export default function RegisterScreen() {
             ]}
             value={login}
             onChangeText={setLogin}
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!registerLoading}
           />
           <TextInput
             placeholder="Ваш email"
@@ -74,6 +93,9 @@ export default function RegisterScreen() {
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!registerLoading}
           />
           <TextInput
             placeholder="Ваш пароль"
@@ -89,21 +111,40 @@ export default function RegisterScreen() {
             ]}
             value={password}
             onChangeText={setPassword}
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!registerLoading}
           />
 
-          <TouchableOpacity onPress={handleRegister} style={styles.buttonContainer}>
-            <LinearGradient colors={["#007bff", "#0056d2"]} style={styles.button}>
-              <Text style={styles.buttonText}>Зарегистрироваться</Text>
+          <TouchableOpacity 
+            onPress={handleRegister} 
+            style={styles.buttonContainer}
+            disabled={registerLoading}
+          >
+            <LinearGradient 
+              colors={["#007bff", "#0056d2"]} 
+              style={[
+                styles.button,
+                registerLoading && styles.buttonDisabled
+              ]}
+            >
+              <Text style={styles.buttonText}>
+                {registerLoading ? "Регистрация..." : "Зарегистрироваться"}
+              </Text>
             </LinearGradient>
           </TouchableOpacity>
 
           <View style={styles.footer}>
-            <TouchableOpacity onPress={() => router.replace("/(auth)/login")}>
+            <TouchableOpacity 
+              onPress={() => router.replace("/(auth)/login")}
+              disabled={registerLoading}
+            >
               <Text
                 style={[
                   styles.footerLink,
                   styles.footerLinkActive,
                   { color: colors.tint },
+                  registerLoading && styles.disabledText
                 ]}
               >
                 Уже есть аккаунт? Войти
@@ -135,6 +176,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     marginBottom: 14,
+    fontSize: 16,
   },
   buttonContainer: {
     width: "100%",
@@ -147,6 +189,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
   buttonText: {
     color: "#fff",
     fontSize: 16,
@@ -158,8 +203,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     width: "100%",
   },
-  footerLink: {},
+  footerLink: {
+    fontSize: 14,
+  },
   footerLinkActive: {
     fontWeight: "500",
+  },
+  disabledText: {
+    opacity: 0.5,
   },
 });

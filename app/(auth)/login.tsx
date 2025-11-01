@@ -10,6 +10,7 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Platform,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -18,7 +19,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors } from "@/constants/theme";
 
 export default function LoginScreen() {
-  const { login } = useAuth();
+  const { login, loading} = useAuth();
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
@@ -31,7 +32,7 @@ export default function LoginScreen() {
       await login(loginInput, password);
       router.replace("/(tabs)");
     } catch (err: any) {
-      alert(err.message);
+      Alert.alert(err.message);
     }
   };
 
@@ -74,15 +75,19 @@ export default function LoginScreen() {
             onChangeText={setPassword}
           />
 
-          <TouchableOpacity onPress={handleLogin} style={styles.buttonContainer}>
+          <TouchableOpacity 
+              onPress={handleLogin} 
+              style={styles.buttonContainer}
+              disabled={loading}    
+          >
             <LinearGradient colors={["#007bff", "#0056d2"]} style={styles.button}>
-              <Text style={styles.buttonText}>Войти</Text>
+              <Text style={styles.buttonText}>{loading ? "Вход..." : "Войти"}</Text>
             </LinearGradient>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.forgotPasswordContainer}
-            onPress={() => alert("Функция восстановления пароля")}
+            onPress={() => Alert.alert("Функция восстановления пароля")}
           >
             <Text style={[styles.footerLink, { color: colors.tint }]}>
               Забыли пароль?

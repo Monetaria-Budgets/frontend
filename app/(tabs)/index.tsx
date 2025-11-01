@@ -1,4 +1,4 @@
-// app/(tabs)/index.tsx - ОБНОВЛЕННАЯ ВЕРСИЯ
+// app/(tabs)/index.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
 import React, { useState, useCallback } from 'react';
 import { 
   View, 
@@ -23,8 +23,8 @@ import RecentOperations from '@/components/home/RecentOperations';
 
 // Хук для операций
 import { useOperations } from '@/hooks/useOperations';
-// Хук для категорий (чтобы брать цвета)
-import { useCategories } from '@/hooks/useCategories';
+// Хук для категорий из контекста
+import { useCategories } from '@/contexts/CategoriesContext'; // 🔥 ИЗМЕНИТЕ ИМПОРТ
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
@@ -33,7 +33,7 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   
   const { loading, stats, loadOperations } = useOperations();
-  const { categories } = useCategories(); // 🔥 ДОБАВЛЯЕМ ДЛЯ ЦВЕТОВ КАТЕГОРИЙ
+  const { categories, actions: categoryActions } = useCategories(); // 🔥 ТЕПЕРЬ ИЗ КОНТЕКСТА
   const scrollY = new Animated.Value(0);
 
   const headerOpacity = scrollY.interpolate({
@@ -44,9 +44,13 @@ export default function HomeScreen() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    loadOperations().finally(() => setRefreshing(false));
-  }, [loadOperations]);
+    Promise.all([
+      loadOperations(),
+      categoryActions.refresh()
+    ]).finally(() => setRefreshing(false));
+  }, [loadOperations, categoryActions]);
 
+  // 🔥 УПРОЩАЕМ: загружаем только при фокусе
   useFocusEffect(
     useCallback(() => {
       loadOperations();
@@ -55,17 +59,20 @@ export default function HomeScreen() {
 
   const hasData = stats.allOperations.length > 0;
 
-  // 🔥 ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ ЦВЕТА КАТЕГОРИИ ИЗ БЭКА
+  // 🔥 ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ ЦВЕТА КАТЕГОРИИ
   const getCategoryColor = (categoryName: string): string => {
     const category = categories.find(cat => cat.name === categoryName);
-    return category?.color || '#666666'; // fallback цвет
+    return category?.color || '#666666';
   };
 
-  // 🔥 ФОРМИРУЕМ ДАННЫЕ ДЛЯ ДИАГРАММЫ С ЦВЕТАМИ ИЗ БЭКА
+  // 🔥 ФОРМИРУЕМ ДАННЫЕ ДЛЯ ДИАГРАММЫ
   const getExpenseCategoriesData = () => {
     const expenseOperations = stats.currentMonthOperations.filter(op => op.operation === 'expense');
     
-    if (expenseOperations.length === 0) return [];
+    if (expenseOperations.length === 0) {
+      // 🔥 ВОЗВРАЩАЕМ ПУСТОЙ МАССИВ ДЛЯ ОТОБРАЖЕНИЯ ПУСТОГО СОСТОЯНИЯ
+      return [];
+    }
 
     const categoryMap = expenseOperations.reduce((acc, op) => {
       const existing = acc.find(cat => cat.name === op.category);
@@ -76,7 +83,7 @@ export default function HomeScreen() {
           name: op.category,
           amount: op.amount,
           percentage: 0,
-          color: getCategoryColor(op.category) // 🔥 ИСПОЛЬЗУЕМ ЦВЕТ ИЗ БЭКА
+          color: getCategoryColor(op.category)
         });
       }
       return acc;
@@ -123,7 +130,7 @@ export default function HomeScreen() {
         </Text>
       </Animated.View>
       
-      {/* BalanceHeader всегда виден, даже во время загрузки */}
+      {/* BalanceHeader всегда виден */}
       <View style={styles.balanceHeaderWrapper}>
         <BalanceHeader 
           period={new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })} 
@@ -136,7 +143,6 @@ export default function HomeScreen() {
       
       {/* Контент ниже BalanceHeader */}
       {loading ? (
-        // Показываем индикатор загрузки под BalanceHeader
         <View style={styles.loadingContent}>
           <ActivityIndicator size="large" color={colors.tint} />
           <Text style={[styles.loadingText, { color: colors.text }]}>
@@ -161,20 +167,19 @@ export default function HomeScreen() {
           scrollEventThrottle={16}
         >
           <View style={styles.content}>
-            {/* Круговая диаграмма категорий */}
-            {expenseCategoriesData.length > 0 && (
-              <CategoriesChart 
-                categories={expenseCategoriesData} // 🔥 ПЕРЕДАЕМ ДАННЫЕ С ЦВЕТАМИ ИЗ БЭКА
-              />
-            )}
+            {/* 🔥 Круговая диаграмма категорий - ВСЕГДА показываем, даже если нет расходов */}
+            <CategoriesChart 
+              categories={expenseCategoriesData}
+              hasExpenses={expenseCategoriesData.length > 0}
+            />
             
-            {/* Последние 10 операций - ТЕПЕРЬ КАК В ИСТОРИИ */}
+            {/* Последние операции */}
             <RecentOperations 
               operations={stats.allOperations
                 .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                 .slice(0, 10)
               } 
-              categories={categories} // 🔥 ПЕРЕДАЕМ КАТЕГОРИИ ДЛЯ ЦВЕТОВ
+              categories={categories}
             />
           </View>
         </ScrollView>

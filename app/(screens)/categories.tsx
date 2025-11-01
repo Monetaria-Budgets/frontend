@@ -1,4 +1,4 @@
-// app/screens/categories.tsx
+// app/screens/categories.tsx - ПОЛНАЯ ВЕРСИЯ
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -20,15 +20,17 @@ import { Ionicons } from '@expo/vector-icons';
 import CategoryModal from '@/components/categories/CategoryModal';
 
 // Хуки и сервисы
-import { useCategories } from '@/hooks/useCategories';
+import { useCategories } from '@/contexts/CategoriesContext';
 import { Category, CreateCategoryData, UpdateCategoryData } from '@/services/categoryService';
+import { categoryService } from '@/services/categoryService';
+import { operationService } from '@/services/operationService';
 
 export default function CategoriesScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
   
-  const { categories, loading, error, limit, actions } = useCategories();
+  const { categories, loading, error, limit, premiumStatus, actions } = useCategories();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -58,25 +60,61 @@ export default function CategoriesScreen() {
     }
   };
 
-  const handleDeleteCategory = (category: Category) => {
-    Alert.alert(
-      'Удалить категорию',
-      `Вы уверены, что хотите удалить категорию "${category.name}"?`,
-      [
-        { text: 'Отмена', style: 'cancel' },
-        {
-          text: 'Удалить',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await actions.deleteCategory(category.id);
-            } catch (err: any) {
-              Alert.alert('Ошибка', err.message);
-            }
-          },
-        },
-      ]
-    );
+  // Обновленная функция удаления с проверкой операций
+  const handleDeleteCategory = async (category: Category) => {
+    try {
+      // Проверяем есть ли операции с этой категорией
+      const operations = await categoryService.getCategoryOperations(category.id);
+      
+      if (operations.length > 0) {
+        Alert.alert(
+          'Удалить категорию?',
+          `С категорией "${category.name}" связано ${operations.length} операций. Что вы хотите сделать?`,
+          [
+            { text: 'Отмена', style: 'cancel' },
+            {
+              text: 'Удалить все операции',
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  // Удаляем все операции категории
+                  for (const operation of operations) {
+                    await operationService.deleteOperation(operation.id);
+                  }
+                  // Затем удаляем категорию
+                  await actions.deleteCategory(category.id);
+                  Alert.alert('Успех', 'Категория и все связанные операции удалены');
+                } catch (err: any) {
+                  Alert.alert('Ошибка', err.message);
+                }
+              },
+            },
+          ]
+        );
+      } else {
+        // Если операций нет - просто удаляем
+        Alert.alert(
+          'Удалить категорию?',
+          `Вы уверены, что хотите удалить категорию "${category.name}"?`,
+          [
+            { text: 'Отмена', style: 'cancel' },
+            {
+              text: 'Удалить',
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  await actions.deleteCategory(category.id);
+                } catch (err: any) {
+                  Alert.alert('Ошибка', err.message);
+                }
+              },
+            },
+          ]
+        );
+      }
+    } catch (err: any) {
+      Alert.alert('Ошибка', 'Не удалось проверить операции категории');
+    }
   };
 
   const handleEditCategory = (category: Category) => {
@@ -96,7 +134,7 @@ export default function CategoriesScreen() {
     }).format(amount);
   };
 
-  const canCreateCategory = limit.isPremium || limit.current < limit.limit;
+  const canCreateCategory = premiumStatus.hasActivePremium || limit.current < limit.limit;
 
   if (loading && !refreshing && categories.length === 0) {
     return (
@@ -142,7 +180,7 @@ export default function CategoriesScreen() {
           <Text style={[styles.limitTitle, { color: colors.text }]}>
             Лимит категорий
           </Text>
-          {!limit.isPremium && (
+          {!premiumStatus.hasActivePremium && (
             <TouchableOpacity 
               style={[styles.premiumButton, { backgroundColor: colors.tint }]}
               onPress={() => router.push('/premium')}
@@ -165,7 +203,7 @@ export default function CategoriesScreen() {
         </View>
         
         <Text style={[styles.limitText, { color: colors.icon }]}>
-          {limit.current} из {limit.isPremium ? '∞' : limit.limit} категорий 
+          {limit.current} из {premiumStatus.hasActivePremium ? '∞' : limit.limit} категорий 
         </Text>
         
         {!canCreateCategory && (

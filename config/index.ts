@@ -2,4 +2,7 @@
 // export const API_URL = 'http://172.20.10.2:3000';
 
 // Дом
-export const API_URL = 'http://192.168.1.181:3000';
+// export const API_URL = 'http://192.168.1.181:3000';
+
+// Деревня
+export const API_URL = 'http://192.168.0.194:3000';

@@ -1,4 +1,4 @@
-// services/categoryService.ts
+// services/categoryService.ts - ПОЛНАЯ ВЕРСИЯ
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '@/config';
@@ -11,7 +11,7 @@ export interface Category {
   user_id: number;
   created_at: string;
   updated_at?: string;
-  current_month_spent?: number; // Добавляем это поле
+  current_month_spent?: number;
 }
 
 export interface CreateCategoryData {
@@ -163,7 +163,7 @@ export const categoryService = {
   },
 
   /**
-   * Проверить лимит категорий (обновленная логика)
+   * Проверить лимит категорий
    */
   async checkCategoryLimit(): Promise<CategoryLimit> {
     try {
@@ -195,6 +195,42 @@ export const categoryService = {
       }
       
       throw new Error(error.response?.data?.error || 'Ошибка при проверке лимита категорий');
+    }
+  },
+
+  /**
+   * Получить операции категории
+   */
+  async getCategoryOperations(categoryId: number): Promise<any[]> {
+    try {
+      const token = await AsyncStorage.getItem('@token');
+      
+      if (!token) {
+        throw new Error('Токен не найден');
+      }
+
+      const response = await axios.get(
+        `${API_URL}/categories/${categoryId}/operations`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 10000,
+        }
+      );
+
+      return response.data;
+      
+    } catch (error: any) {
+      console.error('❌ Ошибка при получении операций категории:', error);
+      
+      // Если операций нет или endpoint не существует, возвращаем пустой массив
+      if (error.response?.status === 404) {
+        return [];
+      }
+      
+      throw new Error(error.response?.data?.error || 'Ошибка при получении операций категории');
     }
   }
 };

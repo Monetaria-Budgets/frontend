@@ -1,9 +1,26 @@
-// hooks/useCategories.ts - УПРОЩЕННАЯ ВЕРСИЯ
-import { useState, useCallback, useEffect } from 'react';
+// contexts/CategoriesContext.tsx
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { categoryService, Category, CreateCategoryData, UpdateCategoryData, CategoryLimit } from '@/services/categoryService';
 import { premiumService, PremiumStatus } from '@/services/premiumService';
 
-export const useCategories = () => {
+interface CategoriesContextType {
+  categories: Category[];
+  loading: boolean;
+  error: string | null;
+  limit: CategoryLimit;
+  premiumStatus: PremiumStatus;
+  actions: {
+    createCategory: (data: CreateCategoryData) => Promise<Category>;
+    updateCategory: (id: number, data: UpdateCategoryData) => Promise<Category>;
+    deleteCategory: (id: number) => Promise<void>;
+    refresh: () => Promise<void>;
+    clearError: () => void;
+  };
+}
+
+const CategoriesContext = createContext<CategoriesContextType | undefined>(undefined);
+
+export const CategoriesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -93,7 +110,7 @@ export const useCategories = () => {
     loadCategories();
   }, [loadCategories]);
 
-  return {
+  const value = {
     categories,
     loading,
     error,
@@ -107,4 +124,18 @@ export const useCategories = () => {
       clearError
     }
   };
+
+  return (
+    <CategoriesContext.Provider value={value}>
+      {children}
+    </CategoriesContext.Provider>
+  );
+};
+
+export const useCategories = () => {
+  const context = useContext(CategoriesContext);
+  if (context === undefined) {
+    throw new Error('useCategories must be used within a CategoriesProvider');
+  }
+  return context;
 };

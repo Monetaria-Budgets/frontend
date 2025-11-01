@@ -6,13 +6,11 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useNotifications } from '@/contexts/NotificationContext';
 
 export const TabsHeader = () => {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
-  const { unreadCount } = useNotifications();
 
   const currentDate = new Date().toLocaleDateString('ru-RU', {
     day: 'numeric',
@@ -40,10 +38,10 @@ export const TabsHeader = () => {
         {currentDate}
       </Text>
 
-      {/* Кнопка уведомлений справа с бейджем */}
+      {/* Кнопка уведомлений справа */}
       <Pressable
         onPress={() => router.push('/(screens)/notifications')}
-        style={styles.notificationButton}
+        style={styles.headerButton}
         hitSlop={10}
       >
         <Ionicons
@@ -51,13 +49,6 @@ export const TabsHeader = () => {
           size={26}
           color="white"
         />
-        {unreadCount > 0 && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </Text>
-          </View>
-        )}
       </Pressable>
     </View>
   );
@@ -71,37 +62,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 60,
     paddingBottom: 16,
+    // Убрали borderBottomWidth
   },
   headerButton: {
     padding: 4,
-  },
-  notificationButton: {
-    padding: 4,
-    position: 'relative',
   },
   headerDate: {
     fontSize: 18,
     fontWeight: '600',
     textAlign: 'center',
-    color: 'white',
-  },
-  badge: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    backgroundColor: '#FF3B30',
-    borderRadius: 10,
-    minWidth: 18,
-    height: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4,
-    borderWidth: 2,
-    borderColor: 'white',
-  },
-  badgeText: {
-    color: 'white',
-    fontSize: 10,
-    fontWeight: 'bold',
+    color: 'white', // Белый текст на tint фоне
   },
 });
