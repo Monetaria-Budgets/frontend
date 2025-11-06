@@ -2,7 +2,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '@/config';
-import { Category } from './categoryService'; // 🔥 Импортируем отсюда
+import { Category } from './categoryService';
 
 export interface CreateOperationData {
   amount: number;
@@ -32,20 +32,17 @@ export interface Operation {
   category: string;
 }
 
-// 🔥 УДАЛЕН интерфейс Category - используем из categoryService
-
 export const operationService = {
   async createOperation(operationData: CreateOperationData) {
     try {
       const token = await AsyncStorage.getItem('@token');
       
       if (!token) {
-        throw new Error('Токен не найден');
+        throw new Error('Пользователь не авторизован');
       }
 
       console.log('📤 Sending operation data:', operationData);
 
-      // 🔥 Убедимся, что description не undefined
       const dataToSend = {
         ...operationData,
         description: operationData.description || null
@@ -59,7 +56,7 @@ export const operationService = {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
-          timeout: 15000, // Увеличим таймаут
+          timeout: 15000,
         }
       );
       
@@ -69,11 +66,9 @@ export const operationService = {
     } catch (error: any) {
       console.error('🔴 Error creating operation:', error);
       
-      // Более детальный лог ошибки
       if (error.response) {
         console.error('🔴 Response status:', error.response.status);
         console.error('🔴 Response data:', error.response.data);
-        console.error('🔴 Response headers:', error.response.headers);
         
         throw new Error(error.response.data.error || `Ошибка сервера: ${error.response.status}`);
       } else if (error.request) {
@@ -91,13 +86,13 @@ export const operationService = {
       const token = await AsyncStorage.getItem('@token');
       
       if (!token) {
-        throw new Error('Токен не найден');
+        throw new Error('Пользователь не авторизован');
       }
 
       console.log('✏️ Updating operation:', operationId, updateData);
 
       const response = await axios.put(
-        `${API_URL}/operations/${operationId}`, // 🔥 Правильный endpoint
+        `${API_URL}/operations/${operationId}`,
         updateData,
         {
           headers: {
@@ -130,7 +125,7 @@ export const operationService = {
       const token = await AsyncStorage.getItem('@token');
       
       if (!token) {
-        throw new Error('Токен не найден');
+        throw new Error('Пользователь не авторизован');
       }
 
       console.log('🗑️ Deleting operation:', operationId);
@@ -168,6 +163,7 @@ export const operationService = {
       const token = await AsyncStorage.getItem('@token');
       
       if (!token) {
+        console.log('🔐 Пользователь не авторизован, возвращаем пустой массив категорий');
         return [];
       }
 
@@ -180,23 +176,23 @@ export const operationService = {
 
     } catch (error: any) {
       console.error('🔴 Error fetching categories:', error);
+      
+      // Если пользователь не авторизован или другие ошибки - возвращаем пустой массив
+      if (error.response?.status === 401) {
+        console.log('🔐 Неавторизованный доступ к категориям');
+        return [];
+      }
+      
       return [];
     }
   },
 
-  async createCategoryIfNotExists(name: string): Promise<Category> {
+  async createCategoryIfNotExists(name: string): Promise<Category | null> {
     try {
       const token = await AsyncStorage.getItem('@token');
       if (!token) {
-        // 🔥 Возвращаем объект с полями из categoryService
-        return { 
-          id: Date.now(), 
-          name: name,
-          color: '#666666',
-          type: 'expense',
-          user_id: 0,
-          created_at: new Date().toISOString()
-        };
+        console.log('🔐 Пользователь не авторизован, невозможно создать категорию');
+        return null;
       }
 
       const existingCategories = await this.getCategories();
@@ -219,14 +215,8 @@ export const operationService = {
       
       return response.data as Category;
     } catch (error: any) {
-      return { 
-        id: Date.now(), 
-        name: name,
-        color: '#666666',
-        type: 'expense',
-        user_id: 0,
-        created_at: new Date().toISOString()
-      };
+      console.error('🔴 Error creating category:', error);
+      return null;
     }
   },
 
@@ -238,7 +228,10 @@ export const operationService = {
   }): Promise<Operation[]> {
     try {
       const token = await AsyncStorage.getItem('@token');
-      if (!token) throw new Error('Токен не найден');
+      if (!token) {
+        console.log('🔐 Пользователь не авторизован, возвращаем пустой массив операций');
+        return [];
+      }
 
       const params = new URLSearchParams();
       if (filters?.startDate) params.append('startDate', filters.startDate);
@@ -265,6 +258,14 @@ export const operationService = {
       }));
 
     } catch (error: any) {
+      console.error('🔴 Error fetching operations:', error);
+      
+      // Если не авторизован - возвращаем пустой массив
+      if (error.response?.status === 401) {
+        console.log('🔐 Неавторизованный доступ к операциям');
+        return [];
+      }
+      
       throw new Error(
         error.response?.data?.error || 'Ошибка при получении операций'
       );

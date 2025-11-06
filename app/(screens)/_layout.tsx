@@ -53,6 +53,12 @@ export default function ScreensLayout() {
           title: 'Уведомления',
         }}
       />
+      <Stack.Screen
+        name="premium"
+        options={{
+          title: 'Premium',
+        }}
+      />
     </Stack>
   );
 }
@@ -65,7 +71,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 60,
     paddingBottom: 16,
-    // Убрали borderBottomWidth
   },
   headerButton: {
     width: 40,
@@ -76,6 +81,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     flex: 1,
-    color: 'white', // Белый текст на tint фоне
+    color: 'white',
   },
 });

@@ -1,4 +1,4 @@
-// services/categoryService.ts - ПОЛНАЯ ВЕРСИЯ
+// services/categoryService.ts
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '@/config';
@@ -39,7 +39,8 @@ export const categoryService = {
       const token = await AsyncStorage.getItem('@token');
       
       if (!token) {
-        throw new Error('Токен не найден');
+        console.log('🔐 Пользователь не авторизован, возвращаем пустой массив категорий');
+        return [];
       }
 
       const response = await axios.get(
@@ -58,12 +59,13 @@ export const categoryService = {
     } catch (error: any) {
       console.error('❌ Ошибка при загрузке категорий:', error);
       
-      // Если категорий нет - возвращаем пустой массив
-      if (error.response?.status === 404) {
+      // Если категорий нет или не авторизован - возвращаем пустой массив
+      if (error.response?.status === 404 || error.response?.status === 401) {
+        console.log('🔐 Неавторизованный доступ или категории не найдены');
         return [];
       }
       
-      throw new Error(error.response?.data?.error || 'Ошибка при загрузке категорий');
+      return [];
     }
   },
 
@@ -75,7 +77,7 @@ export const categoryService = {
       const token = await AsyncStorage.getItem('@token');
       
       if (!token) {
-        throw new Error('Токен не найден');
+        throw new Error('Пользователь не авторизован');
       }
 
       const response = await axios.post(
@@ -111,7 +113,7 @@ export const categoryService = {
       const token = await AsyncStorage.getItem('@token');
       
       if (!token) {
-        throw new Error('Токен не найден');
+        throw new Error('Пользователь не авторизован');
       }
 
       const response = await axios.put(
@@ -142,7 +144,7 @@ export const categoryService = {
       const token = await AsyncStorage.getItem('@token');
       
       if (!token) {
-        throw new Error('Токен не найден');
+        throw new Error('Пользователь не авторизован');
       }
 
       await axios.delete(
@@ -165,12 +167,13 @@ export const categoryService = {
   /**
    * Проверить лимит категорий
    */
-  async checkCategoryLimit(): Promise<CategoryLimit> {
+  async checkCategoryLimit(): Promise<CategoryLimit | null> {
     try {
       const token = await AsyncStorage.getItem('@token');
       
       if (!token) {
-        throw new Error('Токен не найден');
+        console.log('🔐 Пользователь не авторизован, невозможно проверить лимит категорий');
+        return null;
       }
 
       const response = await axios.get(
@@ -189,12 +192,13 @@ export const categoryService = {
     } catch (error: any) {
       console.error('❌ Ошибка при проверке лимита:', error);
       
-      // Если endpoint не существует, возвращаем дефолтные значения
-      if (error.response?.status === 404) {
-        return { current: 0, limit: 6, isPremium: false };
+      // Если endpoint не существует или не авторизован, возвращаем null
+      if (error.response?.status === 404 || error.response?.status === 401) {
+        console.log('🔐 Неавторизованный доступ или endpoint не найден');
+        return null;
       }
       
-      throw new Error(error.response?.data?.error || 'Ошибка при проверке лимита категорий');
+      return null;
     }
   },
 
@@ -206,7 +210,8 @@ export const categoryService = {
       const token = await AsyncStorage.getItem('@token');
       
       if (!token) {
-        throw new Error('Токен не найден');
+        console.log('🔐 Пользователь не авторизован, возвращаем пустой массив операций');
+        return [];
       }
 
       const response = await axios.get(
@@ -226,11 +231,12 @@ export const categoryService = {
       console.error('❌ Ошибка при получении операций категории:', error);
       
       // Если операций нет или endpoint не существует, возвращаем пустой массив
-      if (error.response?.status === 404) {
+      if (error.response?.status === 404 || error.response?.status === 401) {
+        console.log('🔐 Неавторизованный доступ или операции не найдены');
         return [];
       }
       
-      throw new Error(error.response?.data?.error || 'Ошибка при получении операций категории');
+      return [];
     }
   }
 };

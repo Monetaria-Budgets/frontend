@@ -11,6 +11,7 @@ import {
   Keyboard,
   Platform,
   Alert,
+  ActivityIndicator
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -27,6 +28,7 @@ export default function RegisterScreen() {
   const [login, setLogin] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isRegistering, setIsRegistering] = useState(false);
 
   const handleRegister = async () => {
     if (!login.trim() || !email.trim() || !password.trim()) {
@@ -39,19 +41,46 @@ export default function RegisterScreen() {
       return;
     }
 
-    if (!email.includes('@')) {
+    if (!email.includes('@') || !email.includes('.')) {
       Alert.alert("Ошибка", "Пожалуйста, введите корректный email");
       return;
     }
 
+    if (login.length < 3) {
+      Alert.alert("Ошибка", "Логин должен содержать минимум 3 символа");
+      return;
+    }
+
     try {
+      console.log('🚀 RegisterScreen: Starting registration process...');
+      setIsRegistering(true);
+      
       await register(login, email, password);
-      Alert.alert("Успешно", "Регистрация прошла успешно! Теперь вы можете войти в систему.");
-      router.replace("/(auth)/login");
+      
+      console.log('✅ RegisterScreen: Registration successful');
+      Alert.alert(
+        "Успешно", 
+        "Регистрация прошла успешно! Теперь вы можете войти в систему.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              console.log('🔄 RegisterScreen: Navigating to login...');
+              router.replace("/(auth)/login");
+            }
+          }
+        ]
+      );
+      
     } catch (err: any) {
+      console.error('💥 RegisterScreen: Registration error:', err);
       Alert.alert("Ошибка регистрации", err.message);
+    } finally {
+      setIsRegistering(false);
     }
   };
+
+  const isLoading = registerLoading || isRegistering;
 
   return (
     <KeyboardAvoidingView
@@ -61,6 +90,10 @@ export default function RegisterScreen() {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={[styles.container, { backgroundColor: colors.background }]}>
           <Image source={require("@/assets/logo.png")} style={styles.logo} />
+
+          <Text style={[styles.title, { color: colors.text }]}>
+            Создайте аккаунт
+          </Text>
 
           <TextInput
             placeholder="Ваш логин"
@@ -77,7 +110,7 @@ export default function RegisterScreen() {
             onChangeText={setLogin}
             autoCapitalize="none"
             autoCorrect={false}
-            editable={!registerLoading}
+            editable={!isLoading}
           />
           <TextInput
             placeholder="Ваш email"
@@ -95,10 +128,10 @@ export default function RegisterScreen() {
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
-            editable={!registerLoading}
+            editable={!isLoading}
           />
           <TextInput
-            placeholder="Ваш пароль"
+            placeholder="Ваш пароль (мин. 6 символов)"
             placeholderTextColor={colors.placeholder}
             secureTextEntry
             style={[
@@ -113,38 +146,40 @@ export default function RegisterScreen() {
             onChangeText={setPassword}
             autoCapitalize="none"
             autoCorrect={false}
-            editable={!registerLoading}
+            editable={!isLoading}
           />
 
           <TouchableOpacity 
             onPress={handleRegister} 
             style={styles.buttonContainer}
-            disabled={registerLoading}
+            disabled={isLoading}
           >
             <LinearGradient 
               colors={["#007bff", "#0056d2"]} 
               style={[
                 styles.button,
-                registerLoading && styles.buttonDisabled
+                isLoading && styles.buttonDisabled
               ]}
             >
-              <Text style={styles.buttonText}>
-                {registerLoading ? "Регистрация..." : "Зарегистрироваться"}
-              </Text>
+              {isLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Зарегистрироваться</Text>
+              )}
             </LinearGradient>
           </TouchableOpacity>
 
           <View style={styles.footer}>
             <TouchableOpacity 
               onPress={() => router.replace("/(auth)/login")}
-              disabled={registerLoading}
+              disabled={isLoading}
             >
               <Text
                 style={[
                   styles.footerLink,
                   styles.footerLinkActive,
                   { color: colors.tint },
-                  registerLoading && styles.disabledText
+                  isLoading && styles.disabledText
                 ]}
               >
                 Уже есть аккаунт? Войти
@@ -165,10 +200,16 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   logo: {
-    width: 140,
-    height: 140,
-    marginBottom: 30,
+    width: 120,
+    height: 120,
+    marginBottom: 20,
     resizeMode: "contain",
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 30,
+    textAlign: "center",
   },
   input: {
     width: "100%",
@@ -183,11 +224,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: "hidden",
     marginTop: 10,
+    marginBottom: 15,
   },
   button: {
     paddingVertical: 16,
     justifyContent: "center",
     alignItems: "center",
+    minHeight: 54,
   },
   buttonDisabled: {
     opacity: 0.6,
@@ -200,14 +243,16 @@ const styles = StyleSheet.create({
   footer: {
     position: "absolute",
     bottom: 30,
+    left: 20,
+    right: 20,
     alignItems: "center",
-    width: "100%",
   },
   footerLink: {
     fontSize: 14,
   },
   footerLinkActive: {
     fontWeight: "500",
+    textAlign: "center",
   },
   disabledText: {
     opacity: 0.5,

@@ -89,7 +89,11 @@ export const PremiumCard: React.FC<PremiumCardProps> = ({
               </View>
             )}
           </View>
-          {!hadPremiumBefore && (
+          {hadPremiumBefore ? (
+            <Text style={[styles.regularPriceNote, { color: colors.icon }]}>
+              Стандартная цена для продления
+            </Text>
+          ) : (
             <Text style={[styles.discountNote, { color: colors.icon }]}>
               Специальная цена для новых пользователей
             </Text>
@@ -105,10 +109,20 @@ export const PremiumCard: React.FC<PremiumCardProps> = ({
           onPress={onUpgrade}
         >
           <Text style={styles.premiumButtonText}>
-            {hadPremiumBefore ? 'Продлить подписку' : 'Попробовать бесплатно'}
+            {hadPremiumBefore ? 'Продлить подписку за 199 ₽' : 'Попробовать за 99 ₽'}
           </Text>
           <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
         </Pressable>
+
+        {/* Дополнительная информация для тех, у кого уже был премиум */}
+        {hadPremiumBefore && (
+          <View style={styles.previousUserInfo}>
+            <Ionicons name="information-circle" size={16} color={colors.icon} />
+            <Text style={[styles.previousUserText, { color: colors.icon }]}>
+              У вас уже была подписка ранее. При продлении применяется стандартный тариф.
+            </Text>
+          </View>
+        )}
       </View>
     );
   }
@@ -245,6 +259,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontStyle: 'italic',
   },
+  regularPriceNote: {
+    fontSize: 12,
+    fontStyle: 'italic',
+  },
   premiumButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -258,6 +276,20 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  previousUserInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    padding: 12,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  previousUserText: {
+    fontSize: 12,
+    lineHeight: 16,
+    flex: 1,
   },
   premiumActiveCard: {
     borderRadius: 16,

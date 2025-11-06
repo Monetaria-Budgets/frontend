@@ -11,6 +11,7 @@ import {
   Keyboard,
   Platform,
   Alert,
+  ActivityIndicator
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -19,22 +20,41 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors } from "@/constants/theme";
 
 export default function LoginScreen() {
-  const { login, loading} = useAuth();
+  const { login, loading } = useAuth();
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
 
   const [loginInput, setLoginInput] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const handleLogin = async () => {
+    if (!loginInput.trim() || !password.trim()) {
+      Alert.alert("Ошибка", "Заполните все поля");
+      return;
+    }
+
     try {
+      console.log('🚀 LoginScreen: Starting login process...');
+      setIsLoggingIn(true);
+      
       await login(loginInput, password);
+      
+      console.log('✅ LoginScreen: Auth successful, navigating to tabs...');
+      
+      // Навигация после успешного логина
       router.replace("/(tabs)");
+      
     } catch (err: any) {
-      Alert.alert(err.message);
+      console.error('💥 LoginScreen: Login error:', err);
+      Alert.alert("Ошибка входа", err.message);
+    } finally {
+      setIsLoggingIn(false);
     }
   };
+
+  const isLoading = loading || isLoggingIn;
 
   return (
     <KeyboardAvoidingView
@@ -58,6 +78,8 @@ export default function LoginScreen() {
             ]}
             value={loginInput}
             onChangeText={setLoginInput}
+            editable={!isLoading}
+            autoCapitalize="none"
           />
           <TextInput
             placeholder="Ваш пароль"
@@ -73,21 +95,28 @@ export default function LoginScreen() {
             ]}
             value={password}
             onChangeText={setPassword}
+            editable={!isLoading}
+            autoCapitalize="none"
           />
 
           <TouchableOpacity 
-              onPress={handleLogin} 
-              style={styles.buttonContainer}
-              disabled={loading}    
+            onPress={handleLogin} 
+            style={styles.buttonContainer}
+            disabled={isLoading}    
           >
             <LinearGradient colors={["#007bff", "#0056d2"]} style={styles.button}>
-              <Text style={styles.buttonText}>{loading ? "Вход..." : "Войти"}</Text>
+              {isLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Войти</Text>
+              )}
             </LinearGradient>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.forgotPasswordContainer}
             onPress={() => Alert.alert("Функция восстановления пароля")}
+            disabled={isLoading}
           >
             <Text style={[styles.footerLink, { color: colors.tint }]}>
               Забыли пароль?
@@ -95,7 +124,10 @@ export default function LoginScreen() {
           </TouchableOpacity>
 
           <View style={styles.footer}>
-            <TouchableOpacity onPress={() => router.replace("/(auth)/register")}>
+            <TouchableOpacity 
+              onPress={() => router.replace("/(auth)/register")}
+              disabled={isLoading}
+            >
               <Text
                 style={[
                   styles.footerLink,
@@ -132,6 +164,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     marginBottom: 14,
+    fontSize: 16,
   },
   buttonContainer: {
     width: "100%",
@@ -144,6 +177,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     justifyContent: "center",
     alignItems: "center",
+    minHeight: 54,
   },
   buttonText: {
     color: "#fff",

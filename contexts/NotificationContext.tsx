@@ -12,7 +12,9 @@ interface NotificationContextType {
   markAsRead: (notificationId: number) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   deleteNotification: (notificationId: number) => Promise<void>;
+  deleteAllNotifications: () => Promise<void>;
   refresh: () => Promise<void>;
+  lastUpdate: number;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -20,6 +22,17 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const notificationState = useNotifications();
+  const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
+
+  // Функция обновления с проверкой пользователя
+  const refreshWithTimestamp = async () => {
+    if (!user) {
+      console.log('👤 Пользователь не авторизован - пропускаем обновление уведомлений');
+      return;
+    }
+    await notificationState.refresh();
+    setLastUpdate(Date.now());
+  };
 
   // Автоматически загружаем уведомления при смене пользователя
   useEffect(() => {
@@ -27,32 +40,24 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       console.log('👤 Пользователь изменился - загружаем уведомления');
       notificationState.loadUnreadCount();
       notificationState.loadNotifications();
+      setLastUpdate(Date.now());
     } else {
       console.log('👤 Пользователь вышел - сбрасываем уведомления');
       // Сбрасываем состояние при выходе
-      if (notificationState.notifications.length > 0) {
-        notificationState.loadNotifications(0, 0);
-      }
-      if (notificationState.unreadCount > 0) {
-        notificationState.loadUnreadCount();
+      if (notificationState.notifications.length > 0 || notificationState.unreadCount > 0) {
+        // Используем внутренние методы для сброса без API запросов
+        notificationState.notifications.length = 0;
+        notificationState.unreadCount = 0;
+        notificationState.error = null;
+        setLastUpdate(Date.now());
       }
     }
   }, [user]);
 
-  // Добавляем refresh функцию
-  const refresh = async () => {
-    try {
-      await notificationState.loadUnreadCount();
-      await notificationState.loadNotifications();
-      console.log('✅ Уведомления обновлены через контекст');
-    } catch (err) {
-      console.error('❌ Ошибка обновления уведомлений в контексте:', err);
-    }
-  };
-
   const contextValue: NotificationContextType = {
     ...notificationState,
-    refresh,
+    refresh: refreshWithTimestamp,
+    lastUpdate,
   };
 
   return (

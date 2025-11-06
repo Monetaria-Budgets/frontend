@@ -1,5 +1,5 @@
 // app/(tabs)/_layout.tsx
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs, useRouter, Redirect } from 'expo-router';
 import React from 'react';
 
 import { HapticTab } from '@/components/haptic-tab';
@@ -8,11 +8,44 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { Pressable, Text, View, StyleSheet } from 'react-native';
+import { Pressable, Text, View, StyleSheet, ActivityIndicator } from 'react-native';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const router = useRouter();
+  const { user, loading, authInitialized } = useAuth();
+
+  console.log('📱 TabLayout: Auth state:', { 
+    user: !!user, 
+    loading, 
+    authInitialized 
+  });
+
+  // Показываем индикатор загрузки при инициализации
+  if (loading || !authInitialized) {
+    return (
+      <View style={{ 
+        flex: 1, 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        backgroundColor: Colors[colorScheme ?? 'light'].background 
+      }}>
+        <ActivityIndicator size="large" />
+        <Text style={{ marginTop: 10, color: Colors[colorScheme ?? 'light'].text }}>
+          Загрузка...
+        </Text>
+      </View>
+    );
+  }
+
+  // Если не авторизован - редирект на логин
+  if (!user) {
+    console.log('🔐 TabLayout: User not authenticated, redirecting to login');
+    return <Redirect href="/(auth)/login" />;
+  }
+
+  console.log('✅ TabLayout: User authenticated, rendering tabs');
 
   return (
     <Tabs

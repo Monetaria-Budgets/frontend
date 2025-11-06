@@ -47,10 +47,17 @@ export default function ProfileScreen() {
   const loadPremiumStatus = async () => {
     try {
       setLoadingPremium(true);
+      console.log('🔍 ProfileScreen: Загружаем премиум статус...');
       const status = await premiumService.checkPremiumStatus();
+      console.log('🔍 ProfileScreen: Получен премиум статус:', {
+        hasActivePremium: status.hasActivePremium,
+        hadPremiumBefore: status.hadPremiumBefore,
+        subscriptionEnd: status.subscriptionEnd,
+        daysRemaining: status.daysRemaining
+      });
       setPremiumStatus(status);
     } catch (error) {
-      console.error('Ошибка загрузки премиум статуса:', error);
+      console.error('❌ ProfileScreen: Ошибка загрузки премиум статуса:', error);
     } finally {
       setLoadingPremium(false);
     }
@@ -90,6 +97,16 @@ export default function ProfileScreen() {
   // Используем правильный премиум статус
   const isPremium = premiumStatus.hasActivePremium;
   const hadPremiumBefore = premiumStatus.hadPremiumBefore;
+
+  // Отладочная информация в режиме разработки
+  if (__DEV__) {
+    console.log('🔍 ProfileScreen: Передаем в PremiumCard:', {
+      isPremium,
+      hadPremiumBefore,
+      subscriptionEnd: premiumStatus.subscriptionEnd,
+      daysRemaining: premiumStatus.daysRemaining
+    });
+  }
 
   const handlePinCodeAction = () => {
     if (isPinCodeSet) {

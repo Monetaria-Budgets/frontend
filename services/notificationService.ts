@@ -57,11 +57,20 @@ export const notificationService = {
    * Получить все уведомления пользователя
    */
   async getNotifications(limit: number = 50, offset: number = 0): Promise<NotificationsResponse> {
-    try {
+     try {
       const token = await AsyncStorage.getItem('@token');
       
       if (!token) {
-        throw new Error('Токен не найден');
+        console.log('🔔 Токен не найден - пользователь не авторизован');
+        return {
+          success: true,
+          data: [],
+          pagination: {
+            total: 0,
+            limit,
+            offset
+          }
+        };
       }
 
       console.log('🔔 Frontend: Getting notifications...');
@@ -85,6 +94,18 @@ export const notificationService = {
       return response.data;
       
     } catch (error: any) {
+      if (error.response?.status === 401) {
+        console.log('🔔 Пользователь не авторизован - возвращаем пустой список');
+        return {
+          success: true,
+          data: [],
+          pagination: {
+            total: 0,
+            limit,
+            offset
+          }
+        };
+      }
       console.error('❌ Frontend: Ошибка при загрузке уведомлений:', error);
       console.error('❌ Frontend: Error details:', {
         status: error.response?.status,
@@ -122,6 +143,36 @@ export const notificationService = {
     } catch (error: any) {
       console.error('❌ Ошибка при загрузке непрочитанных уведомлений:', error);
       throw new Error(error.response?.data?.error || 'Ошибка при загрузке непрочитанных уведомлений');
+    }
+  },
+
+  /**
+   * Удалить все уведомления пользователя
+   */
+  async deleteAllNotifications(): Promise<DeleteResponse> {
+    try {
+      const token = await AsyncStorage.getItem('@token');
+      
+      if (!token) {
+        throw new Error('Токен не найден');
+      }
+
+      const response = await axios.delete(
+        `${API_URL}/notifications`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 10000,
+        }
+      );
+
+      return response.data;
+      
+    } catch (error: any) {
+      console.error('❌ Ошибка при удалении всех уведомлений:', error);
+      throw new Error(error.response?.data?.error || 'Ошибка при удалении всех уведомлений');
     }
   },
 

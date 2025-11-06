@@ -3,7 +3,6 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '@/config';
 
-// Определяем Category здесь, чтобы избежать циклических зависимостей
 export interface Category {
   id: number;
   name: string;
@@ -58,7 +57,8 @@ export const limitService = {
       const token = await AsyncStorage.getItem('@token');
       
       if (!token) {
-        throw new Error('Токен не найден');
+        console.log('🔐 Пользователь не авторизован, возвращаем пустой массив лимитов');
+        return [];
       }
 
       const response = await axios.get(
@@ -77,11 +77,12 @@ export const limitService = {
     } catch (error: any) {
       console.error('❌ Ошибка при загрузке лимитов:', error);
       
-      if (error.response?.status === 404) {
+      if (error.response?.status === 404 || error.response?.status === 401) {
+        console.log('🔐 Неавторизованный доступ или лимиты не найдены');
         return [];
       }
       
-      throw new Error(error.response?.data?.error || 'Ошибка при загрузке лимитов');
+      return [];
     }
   },
 
@@ -93,7 +94,8 @@ export const limitService = {
       const token = await AsyncStorage.getItem('@token');
       
       if (!token) {
-        throw new Error('Токен не найден');
+        console.log('🔐 Пользователь не авторизован, возвращаем пустой массив категорий с лимитами');
+        return [];
       }
 
       const response = await axios.get(
@@ -111,6 +113,12 @@ export const limitService = {
       
     } catch (error: any) {
       console.error('❌ Ошибка при загрузке категорий с лимитами:', error);
+      
+      if (error.response?.status === 401) {
+        console.log('🔐 Неавторизованный доступ к категориям с лимитами');
+        return [];
+      }
+      
       throw new Error(error.response?.data?.error || 'Ошибка при загрузке категорий с лимитами');
     }
   },
@@ -123,7 +131,7 @@ export const limitService = {
       const token = await AsyncStorage.getItem('@token');
       
       if (!token) {
-        throw new Error('Токен не найден');
+        throw new Error('Пользователь не авторизован');
       }
 
       const response = await axios.post(
@@ -159,7 +167,7 @@ export const limitService = {
       const token = await AsyncStorage.getItem('@token');
       
       if (!token) {
-        throw new Error('Токен не найден');
+        throw new Error('Пользователь не авторизован');
       }
 
       const response = await axios.put(
@@ -190,7 +198,7 @@ export const limitService = {
       const token = await AsyncStorage.getItem('@token');
       
       if (!token) {
-        throw new Error('Токен не найден');
+        throw new Error('Пользователь не авторизован');
       }
 
       await axios.delete(
@@ -213,12 +221,13 @@ export const limitService = {
   /**
    * Проверить лимит на создание лимитов
    */
-  async checkLimitLimit(): Promise<LimitInfo> {
+  async checkLimitLimit(): Promise<LimitInfo | null> {
     try {
       const token = await AsyncStorage.getItem('@token');
       
       if (!token) {
-        throw new Error('Токен не найден');
+        console.log('🔐 Пользователь не авторизован, невозможно проверить лимит лимитов');
+        return null;
       }
 
       const response = await axios.get(
@@ -236,7 +245,13 @@ export const limitService = {
       
     } catch (error: any) {
       console.error('❌ Ошибка при проверке лимита:', error);
-      throw new Error(error.response?.data?.error || 'Ошибка при проверке лимита лимитов');
+      
+      if (error.response?.status === 401) {
+        console.log('🔐 Неавторизованный доступ к проверке лимита');
+        return null;
+      }
+      
+      return null;
     }
   }
 };

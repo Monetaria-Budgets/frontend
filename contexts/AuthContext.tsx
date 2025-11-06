@@ -28,6 +28,7 @@ type AuthContextType = {
   logout: () => Promise<void>;
   loading: boolean;
   registerLoading: boolean;
+  authInitialized: boolean;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,20 +38,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [registerLoading, setRegisterLoading] = useState(false);
+  const [authInitialized, setAuthInitialized] = useState(false);
 
   useEffect(() => {
     const loadStorageData = async () => {
       try {
+        console.log('🔄 AuthProvider: Loading storage data...');
         const token = await AsyncStorage.getItem("@token");
         const user = await AsyncStorage.getItem("@user");
+        
+        console.log('📦 AuthProvider: Storage data loaded', { 
+          token: !!token, 
+          user: !!user 
+        });
+        
         if (token && user) {
           setToken(token);
           setUser(JSON.parse(user));
         }
       } catch (e) {
-        console.error("Ошибка загрузки токена:", e);
+        console.error("❌ AuthProvider: Error loading token:", e);
       } finally {
         setLoading(false);
+        setAuthInitialized(true);
+        console.log('✅ AuthProvider: Auth initialization completed');
       }
     };
     loadStorageData();
@@ -58,44 +69,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (loginInput: string, password: string) => {
     try {
+      console.log('🔐 AuthContext: Login process started');
       setLoading(true);
+
+      console.log('📤 AuthContext: Sending login request...');
       const res = await axios.post(`${API_URL}/auth/login`, {
         login: loginInput,
         password,
       });
 
+      console.log('✅ AuthContext: Login response received:', res.status);
       const { token, user } = res.data;
 
-      // СОХРАНЯЕМ токен и пользователя ПЕРВЫМИ
+      console.log('💾 AuthContext: Saving token and user to storage...');
       await AsyncStorage.setItem("@token", token);
       await AsyncStorage.setItem("@user", JSON.stringify(user));
 
-      // УСТАНАВЛИВАЕМ в состояние
+      console.log('🔄 AuthContext: Setting auth state...');
       setToken(token);
       setUser(user);
 
-      // ЖДЕМ немного и только ПОТОМ проверяем премиум статус
-      setTimeout(async () => {
-        try {
-          const premiumStatus = await premiumService.checkPremiumStatus();
-          
-          // Обновляем пользователя с актуальным премиум статусом
-          const updatedUser = {
-            ...user,
-            premium: premiumStatus.hasActivePremium // ← используем hasActivePremium из premiumStatus
-          };
+      console.log('👤 AuthContext: User after login:', user?.name);
+      console.log('🔑 AuthContext: Token exists after login:', !!token);
 
-          await AsyncStorage.setItem("@user", JSON.stringify(updatedUser));
-          setUser(updatedUser);
-        } catch (premiumError) {
-          console.warn("Не удалось проверить премиум статус:", premiumError);
-          // Игнорируем ошибку проверки премиума, основной логин успешен
-        }
-      }, 100);
+      // ЖДЕМ проверку премиум статуса перед завершением
+      console.log('👑 AuthContext: Checking premium status...');
+      try {
+        const premiumStatus = await premiumService.checkPremiumStatus();
+        console.log('👑 AuthContext: Premium status:', premiumStatus);
+        
+        // Обновляем пользователя с актуальным премиум статусом
+        const updatedUser = {
+          ...user,
+          premium: premiumStatus.hasActivePremium
+        };
+
+        console.log('💾 AuthContext: Updating user with premium status...');
+        await AsyncStorage.setItem("@user", JSON.stringify(updatedUser));
+        setUser(updatedUser);
+        console.log('✅ AuthContext: Premium status updated');
+      } catch (premiumError) {
+        console.warn("⚠️ AuthContext: Premium check failed:", premiumError);
+        // Игнорируем ошибку проверки премиума, основной логин успешен
+      }
+
+      console.log('🎉 AuthContext: Login process completed successfully');
+      
+      // Даем время React обновить состояние
+      await new Promise(resolve => setTimeout(resolve, 50));
 
     } catch (err: any) {
+      console.error('💥 AuthContext: Login error:', err);
+      console.error('💥 AuthContext: Error response:', err.response?.data);
       throw new Error(err.response?.data?.error || "Ошибка входа");
     } finally {
+      console.log('🏁 AuthContext: Setting loading to false');
       setLoading(false);
     }
   };
@@ -103,15 +131,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (login: string, email: string, password: string) => {
     setRegisterLoading(true);
     try {
+      console.log('📝 AuthContext: Registration process started');
       const res = await axios.post(`${API_URL}/auth/register`, {
         login, 
         email, 
         password,
       });
       
-      // Возвращаем данные для возможного использования
+      console.log('✅ AuthContext: Registration successful');
       return res.data;
     } catch (err: any) {
+      console.error('💥 AuthContext: Registration error:', err);
       throw new Error(err.response?.data?.error || "Ошибка регистрации");
     } finally {
       setRegisterLoading(false);
@@ -120,6 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
+      console.log('🚪 AuthContext: Logout process started');
       if (token) {
         await axios.post(
           `${API_URL}/auth/logout`,
@@ -128,12 +159,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         );
       }
     } catch (err) {
-      console.warn("Ошибка при logout (игнорируем локально):", err);
+      console.warn("⚠️ AuthContext: Logout API error (ignoring locally):", err);
     } finally {
+      console.log('🗑️ AuthContext: Clearing storage and state...');
       await AsyncStorage.removeItem("@token");
       await AsyncStorage.removeItem("@user");
       setUser(null);
       setToken(null);
+      console.log('✅ AuthContext: Logout completed');
     }
   };
 
@@ -145,7 +178,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       register, 
       logout, 
       loading,
-      registerLoading 
+      registerLoading,
+      authInitialized 
     }}>
       {children}
     </AuthContext.Provider>

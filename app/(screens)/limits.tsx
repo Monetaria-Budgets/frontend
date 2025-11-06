@@ -36,7 +36,7 @@ export default function LimitsScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   // Используем реальный премиум статус
-  const isPremium = premiumStatus.isPremium;
+  const isPremium = premiumStatus.hasActivePremium;
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
   },
   limitCard: {
     marginHorizontal: 16,
-    marginVertical: 2, // Уменьшено с 16
+    marginVertical: 2,
     padding: 16,
     borderRadius: 12,
     shadowColor: '#000',
@@ -423,9 +423,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   limitsList: {
-    paddingHorizontal: 16,
-    paddingVertical: 8, // Уменьшено с 16
-    gap: 12, // Уменьшено с 16
+    paddingVertical: 8, 
+    gap: 12,
   },
   categoryInfo: {
     flexDirection: 'row',

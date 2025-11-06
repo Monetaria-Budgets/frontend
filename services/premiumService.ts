@@ -24,13 +24,15 @@ export const premiumService = {
       const token = await AsyncStorage.getItem('@token');
       
       if (!token) {
-        console.log('Токен не найден, возвращаем статус по умолчанию');
+        console.log('🔑 Токен не найден, возвращаем статус по умолчанию');
         return { 
           hasActivePremium: false, 
           hadPremiumBefore: false 
         };
       }
 
+      console.log('🔍 Frontend: Запрос премиум статуса...');
+      
       const response = await axios.get(
         `${API_URL}/premium/status`,
         {
@@ -42,11 +44,16 @@ export const premiumService = {
         }
       );
 
-      console.log('✅ Премиум статус получен:', response.data);
+      console.log('✅ Frontend: Премиум статус получен:', response.data);
       return response.data;
       
     } catch (error: any) {
-      console.error('❌ Ошибка при проверке премиум статуса:', error);
+      console.error('❌ Frontend: Ошибка при проверке премиум статуса:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        code: error.code
+      });
       
       // Для любых ошибок возвращаем статус по умолчанию
       return { 
@@ -83,8 +90,19 @@ export const premiumService = {
       return response.data;
       
     } catch (error: any) {
-      console.error('❌ Ошибка при активации премиум подписки:', error);
-      throw new Error(error.response?.data?.error || 'Ошибка при активации премиум подписки');
+      console.error('❌ Детальная ошибка при активации премиум подписки:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        code: error.code
+      });
+      
+      const errorMessage = error.response?.data?.error 
+        || error.response?.data?.details 
+        || error.message 
+        || 'Ошибка при активации премиум подписки';
+      
+      throw new Error(errorMessage);
     }
   }
 };

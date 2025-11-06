@@ -12,6 +12,12 @@ import PinCodeGuard from '@/components/PinCodeGuard';
 import { CurrencyProvider } from '@/contexts/CurrencyContext';
 import { CategoriesProvider } from '@/contexts/CategoriesContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
+import { LogBox } from 'react-native';
+import { RealtimeNotificationsProvider } from '@/components/providers/RealtimeNotificationsProvider';
+
+LogBox.ignoreLogs([
+  'Non-serializable values were found in the navigation state',
+]);
 
 export default function RootLayoutNav() {
   const colorScheme = useColorScheme();
@@ -22,23 +28,25 @@ export default function RootLayoutNav() {
           <BottomSheetModalProvider>
             <AuthProvider>
               <NotificationProvider>
-                <PinCodeProvider>
-                  <PinCodeGuard>
-                    <CategoriesProvider>
-                      <CurrencyProvider>
-                        <Stack screenOptions={{ headerShown: false }}>
-                          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                          <Stack.Screen 
-                            name="(modals)" 
-                            options={{ presentation: 'modal', headerShown: false }}
-                          />
-                        </Stack>
-                        <StatusBar style="auto" />
-                      </CurrencyProvider>
-                    </CategoriesProvider>
-                  </PinCodeGuard>
-                </PinCodeProvider>
+                <RealtimeNotificationsProvider>
+                  <PinCodeProvider>
+                    <PinCodeGuard>
+                      <CategoriesProvider>
+                        <CurrencyProvider>
+                          <Stack screenOptions={{ headerShown: false }}>
+                            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                            <Stack.Screen 
+                              name="(modals)" 
+                              options={{ presentation: 'modal', headerShown: false }}
+                            />
+                          </Stack>
+                          <StatusBar style="auto" />
+                        </CurrencyProvider>
+                      </CategoriesProvider>
+                    </PinCodeGuard>
+                  </PinCodeProvider>
+                </RealtimeNotificationsProvider>
               </NotificationProvider>
             </AuthProvider>
           </BottomSheetModalProvider>
@@ -46,3 +54,9 @@ export default function RootLayoutNav() {
     </ThemeProvider>
   );
 }
+
+ErrorUtils.setGlobalHandler((error, isFatal) => {
+  console.error('💥 GLOBAL ERROR:', error);
+  console.error('💥 Is Fatal:', isFatal);
+  console.error('💥 Stack:', error.stack);
+});

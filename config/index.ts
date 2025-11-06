@@ -4,5 +4,9 @@
 // Дом
 // export const API_URL = 'http://192.168.1.181:3000';
 
+// Комп
+export const API_URL = 'http://192.168.1.162:3000';
+
+
 // Деревня
-export const API_URL = 'http://192.168.0.194:3000';
+// export const API_URL = 'http://192.168.0.194:3000';

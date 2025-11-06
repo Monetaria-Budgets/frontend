@@ -1,23 +1,28 @@
-// hooks/useHeaderNotifications.ts
 import { useEffect } from 'react';
 import { useNotification } from '@/contexts/NotificationContext';
 import { AppState } from 'react-native';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const useHeaderNotifications = () => {
   const { loadUnreadCount } = useNotification();
+  const { user } = useAuth();
 
   useEffect(() => {
+    // Не запускаем интервал если пользователь не авторизован
+    if (!user) return;
+
     let appState = AppState.currentState;
     
     // Интервал для проверки новых уведомлений (только счетчик)
     const interval = setInterval(() => {
-      loadUnreadCount();
-      console.log('🔄 Проверка новых уведомлений для шапки...');
+      if (user) {
+        loadUnreadCount();
+      }
     }, 10000); // Каждые 10 секунд
 
     // Слушатель изменения состояния приложения
     const subscription = AppState.addEventListener('change', nextAppState => {
-      if (appState.match(/inactive|background/) && nextAppState === 'active') {
+      if (appState.match(/inactive|background/) && nextAppState === 'active' && user) {
         console.log('📱 Приложение стало активным - обновляем счетчик');
         loadUnreadCount();
       }
@@ -28,5 +33,5 @@ export const useHeaderNotifications = () => {
       clearInterval(interval);
       subscription.remove();
     };
-  }, [loadUnreadCount]);
+  }, [loadUnreadCount, user]);
 };

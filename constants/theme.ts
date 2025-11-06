@@ -147,3 +147,6 @@ export const Shadows = {
     elevation: 6,
   },
 };
+
+export type ColorScheme = keyof typeof Colors;
+export type ColorValues = typeof Colors.light | typeof Colors.dark;
